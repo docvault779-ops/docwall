@@ -5,7 +5,7 @@
   if (!user) return;
 
   const view = document.getElementById('view');
-  const state = { assignments: null, q: '' };
+  const state = { assignments: null, q: '', pending: 0 };
 
   /* ---- shell ---- */
   document.getElementById('sb-name').textContent = user.name;
@@ -20,7 +20,7 @@
   UI.setupSidebarToggle();
   document.getElementById('search').oninput = (e) => { state.q = e.target.value.trim().toLowerCase(); route(); };
 
-  const NAV = { dashboard: ['Dashboard', 'dashboard'], assignments: ['Assignments', 'book'], grading: ['Needs grading', 'inbox'], students: ['Students', 'grad'], teachers: ['Teachers', 'users'], preview: ['Student view', 'eye'], profile: ['Profile', 'user'] };
+  const NAV = { dashboard: ['Dashboard', 'dashboard'], assignments: ['Assignments', 'book'], grading: ['Needs grading', 'inbox'], students: ['Students', 'grad'], teachers: ['Teachers', 'users'], preview: ['Student view', 'eye'], settings: ['Settings', 'settings'], profile: ['Profile', 'user'] };
 
   /* Open the student portal as a given student (teacher preview, read-only). */
   async function previewAs(studentId) {
@@ -29,14 +29,17 @@
   }
   function paintNav(active) {
     const list = state.assignments || [];
-    const counts = { assignments: list.length, grading: list.reduce((s, a) => s + a.ungraded_count, 0) };
+    const counts = { assignments: list.length, grading: list.reduce((s, a) => s + a.ungraded_count, 0), students: state.pending || null };
     for (const [key, [label, ic]] of Object.entries(NAV)) {
       const el = document.querySelector(`[data-nav="${key}"]`);
       el.innerHTML = `${icon(ic)}<span>${label}</span>${counts[key] != null ? `<span class="count">${counts[key]}</span>` : ''}`;
       el.classList.toggle('active', key === active);
     }
   }
-  async function loadAssignments() { ({ assignments: state.assignments } = await api('GET', '/api/teacher/assignments')); }
+  async function loadAssignments() {
+    ({ assignments: state.assignments } = await api('GET', '/api/teacher/assignments'));
+    try { state.pending = (await api('GET', '/api/teacher/overview')).stats.pending_students; } catch (_) {}
+  }
 
   const stat = (tint, ic, lbl, val, href) => `<a class="card stat" ${href ? `href="${href}"` : ''} style="text-decoration:none;color:inherit"><div class="ico ${tint}">${icon(ic)}</div><div><div class="lbl">${lbl}</div><div class="val">${val}</div></div></a>`;
   function statusBadge(a) {
@@ -53,6 +56,7 @@
     view.innerHTML = '<div class="loading">Loading…</div>';
     const { stats, recent_submissions, upcoming } = await api('GET', '/api/teacher/overview');
     view.innerHTML = `
+      ${stats.pending_students ? `<div class="callout warn" style="margin-bottom:16px">${icon('alert')}<div><strong>${stats.pending_students} student account request${stats.pending_students > 1 ? 's' : ''}</strong> waiting for your approval. <a href="#/students">Review requests</a></div></div>` : ''}
       <div class="page-head"><div><h1>${icon('dashboard')} Dashboard</h1><p class="sub">Welcome back, ${esc(user.name)}.</p></div>
         <a class="btn btn-primary" href="#/assignments/new">${icon('plus')} New assignment</a></div>
       <div class="stats">
@@ -288,12 +292,21 @@
     const { users, groups } = await api('GET', `/api/teacher/users?role=${role}`);
     const params = new URLSearchParams(location.hash.split('?')[1] || '');
     const group = params.get('group') || '';
-    let items = users.filter((u) => !group || u.group_name === group);
+    const pending = users.filter((u) => u.status === 'pending');
+    state.pending = pending.length;
+    let items = users.filter((u) => u.status !== 'pending' && (!group || u.group_name === group));
     if (state.q) items = items.filter((u) => (u.name + ' ' + u.email + ' ' + (u.roll_no || '') + ' ' + u.group_name).toLowerCase().includes(state.q));
     const isStudent = role === 'student';
     view.innerHTML = `
       <div class="page-head"><div><h1>${icon(isStudent ? 'grad' : 'users')} ${isStudent ? 'Students' : 'Teachers'}</h1><p class="sub">${isStudent ? `${users.length} student account${users.length === 1 ? '' : 's'} across ${groups.length} class${groups.length === 1 ? '' : 'es'}.` : `${users.length} teacher account${users.length === 1 ? '' : 's'} with full access.`}</p></div>
         <button class="btn btn-primary" id="add-user">${icon('plus')} Add ${role}</button></div>
+      ${isStudent && pending.length ? `<div class="card" style="margin-bottom:18px;border-color:#fcd34d">
+        <div class="card-pad" style="padding-bottom:6px"><h3 style="font-size:15px;display:flex;align-items:center;gap:8px">${icon('alert')} Account requests <span class="badge pending">${pending.length}</span></h3>
+        <p class="hint">Students who signed up and are waiting to join. Approve to add their roll number and class, or reject to remove the request.</p></div>
+        <div class="table-wrap"><table><thead><tr><th>Email</th><th>Requested</th><th></th></tr></thead><tbody>
+          ${pending.map((u) => `<tr><td><span class="strong">${esc(u.email)}</span></td><td class="dim">${fmtDate(u.created_at)}</td>
+            <td class="actions"><button class="btn btn-sm btn-primary" data-approve="${u.id}">${icon('check')} Approve</button><button class="btn btn-sm" data-reject="${u.id}" style="color:var(--danger)">${icon('x')} Reject</button></td></tr>`).join('')}
+        </tbody></table></div></div>` : ''}
       ${isStudent && groups.length ? `<div class="chips"><a class="chip ${!group ? 'active' : ''}" href="#/students">All<span class="n">${users.length}</span></a>${groups.map((g) => `<a class="chip ${g === group ? 'active' : ''}" href="#/students?group=${encodeURIComponent(g)}">${esc(g)}<span class="n">${users.filter((u) => u.group_name === g).length}</span></a>`).join('')}</div>` : ''}
       ${items.length ? `<div class="card table-wrap"><table><thead><tr>${isStudent ? '<th>Roll no</th>' : ''}<th>Name</th>${isStudent ? '<th>Class</th>' : ''}<th>Email</th>${isStudent ? '<th>Submissions</th>' : '<th>Added</th>'}<th></th></tr></thead><tbody>
         ${items.map((u) => `<tr>${isStudent ? `<td class="strong">${esc(u.roll_no || '—')}</td>` : ''}<td><span class="strong">${esc(u.name)}</span>${u.id === user.id ? ' <span class="badge plain all">You</span>' : ''}</td>${isStudent ? `<td>${groupLabel(u.group_name)}</td>` : ''}<td class="dim">${esc(u.email)}</td><td>${isStudent ? u.submission_count : fmtDate(u.created_at, false)}</td>
@@ -301,12 +314,75 @@
       </tbody></table></div>` : emptyState('users', `No ${role}s found`, isStudent ? 'Students can sign up from the student login page, or add them here.' : 'Add a colleague with the button above.')}`;
     document.getElementById('add-user').onclick = () => openUserModal(role, null, groups, () => renderUsers(role));
     view.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => previewAs(+b.dataset.view));
+    view.querySelectorAll('[data-approve]').forEach((b) => b.onclick = () => openApproveModal(users.find((u) => u.id === +b.dataset.approve), groups, () => renderUsers(role)));
+    view.querySelectorAll('[data-reject]').forEach((b) => b.onclick = async () => {
+      const u = users.find((x) => x.id === +b.dataset.reject);
+      if (!(await confirmDialog('Reject request?', `${u.email} will be removed. They can send a new request later.`))) return;
+      try { await api('DELETE', `/api/teacher/users/${u.id}`); toast('Request rejected', 'ok'); renderUsers(role); } catch (e) { toast(e.message, 'bad'); }
+    });
     view.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => openUserModal(role, users.find((u) => u.id === +b.dataset.edit), groups, () => renderUsers(role)));
     view.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
       const u = users.find((x) => x.id === +b.dataset.del);
       if (!(await confirmDialog(`Delete ${role}?`, `${u.name} (${u.email}) will be removed${isStudent ? ' along with all their submissions' : ''}.`))) return;
       try { await api('DELETE', `/api/teacher/users/${u.id}`); toast('Account deleted', 'ok'); renderUsers(role); } catch (e) { toast(e.message, 'bad'); }
     });
+  }
+
+  function openApproveModal(u, groups, onDone) {
+    const m = modal({
+      title: 'Approve student',
+      body: `<form id="ap-form">
+        <div class="callout info" style="margin-bottom:14px">${icon('user')}<div>Request from <strong>${esc(u.email)}</strong>. Fill in what you know about this student; they will see it on their profile.</div></div>
+        <div class="field"><label>Full name *</label><input name="name" required value="${esc(u.name || '')}"></div>
+        <div class="grid-2">
+          <div class="field"><label>Roll number *</label><input name="roll_no" required placeholder="CS2301"></div>
+          <div class="field"><label>Class / section *</label><input name="group_name" required list="ap-groups" placeholder="CSE-3A"><datalist id="ap-groups">${groups.map((g) => `<option value="${esc(g)}">`).join('')}</datalist></div>
+        </div>
+      </form>`,
+      footer: `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="ap-save">${icon('check')} Approve and activate</button>`,
+    });
+    m.querySelector('#ap-save').onclick = async () => {
+      const form = m.querySelector('#ap-form');
+      if (!form.reportValidity()) return;
+      try {
+        await api('PUT', `/api/teacher/users/${u.id}/approve`, Object.fromEntries(new FormData(form).entries()));
+        toast('Student approved. They can sign in now.', 'ok'); closeModal(); onDone();
+      } catch (e) { toast(e.message, 'bad'); }
+    };
+  }
+
+  async function renderSettings() {
+    paintNav('settings');
+    view.innerHTML = '<div class="loading">Loading…</div>';
+    const { settings } = await api('GET', '/api/teacher/settings');
+    view.innerHTML = `
+      <div class="page-head"><div><h1>${icon('settings')} Settings</h1><p class="sub">Who can join the student portal. Changes apply immediately for everyone.</p></div></div>
+      <div class="detail">
+        <form class="card card-pad" id="st-form">
+          <h3 style="font-size:15px;margin-bottom:12px">Student sign-up</h3>
+          <label class="check" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px"><input type="checkbox" name="student_signup" ${settings.student_signup ? 'checked' : ''} style="margin-top:3px">
+            <span><strong>Allow students to request an account</strong><br><span class="hint">Students enter an email and password. Nobody can sign in until a teacher approves the request on the Students page. Turn this off once everyone has joined.</span></span></label>
+          <div class="field"><label for="st-domains">Accepted email domains</label><input id="st-domains" name="allowed_email_domains" value="${esc(settings.allowed_email_domains.join(', '))}" placeholder="gmail.com"><span class="hint">Comma separated, e.g. <code>gmail.com, college.edu</code>. Leave empty to accept any email address.</span></div>
+          <button class="btn btn-primary" type="submit">${icon('check')} Save settings</button>
+        </form>
+        <div class="card card-pad">
+          <h3 style="font-size:15px;margin-bottom:10px">How joining works</h3>
+          <ol style="font-size:13.5px;padding-left:18px;line-height:1.6;color:var(--text-secondary);display:grid;gap:6px">
+            <li>The student opens the student portal and chooses <em>Request a student account</em>.</li>
+            <li>They enter an email from an accepted domain and choose a password. That is all they fill in.</li>
+            <li>The request appears under <a href="#/students">Students</a>. You approve it, adding the roll number and class, or reject it.</li>
+            <li>Once approved, the student signs in with that email and password.</li>
+          </ol>
+        </div>
+      </div>`;
+    document.getElementById('st-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        await api('PUT', '/api/teacher/settings', { student_signup: fd.get('student_signup') === 'on', allowed_email_domains: fd.get('allowed_email_domains') });
+        toast('Settings saved', 'ok');
+      } catch (ex) { toast(ex.message, 'bad'); }
+    };
   }
 
   function openUserModal(role, u, groups, onDone) {
@@ -406,6 +482,7 @@
       else if (h === '#/grading') renderGrading();
       else if (h === '#/students') await renderUsers('student');
       else if (h === '#/student-view') await renderStudentView();
+      else if (h === '#/settings') await renderSettings();
       else if (h === '#/teachers') await renderUsers('teacher');
       else if (h === '#/profile') renderProfile();
       else location.hash = '#/dashboard';

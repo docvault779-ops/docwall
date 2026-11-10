@@ -46,7 +46,8 @@ STUDENT_PORT = int(os.environ.get("DOCWALL_STUDENT_PORT", os.environ.get("DOCWAL
 TEACHER_PORT = int(os.environ.get("DOCWALL_TEACHER_PORT", "8081"))
 MAX_BODY_BYTES = int(os.environ.get("DOCWALL_MAX_UPLOAD_MB", "25")) * 1024 * 1024
 SESSION_DAYS = int(os.environ.get("DOCWALL_SESSION_DAYS", "7"))
-ALLOW_STUDENT_SIGNUP = os.environ.get("DOCWALL_STUDENT_SIGNUP", "1") != "0"
+ALLOW_STUDENT_SIGNUP = os.environ.get("DOCWALL_STUDENT_SIGNUP", "1") != "0"      # initial value; teachers can change it in Settings
+ALLOWED_EMAIL_DOMAINS = os.environ.get("DOCWALL_ALLOWED_EMAIL_DOMAINS", "gmail.com")  # initial value; comma separated, '' = any
 SECURE_COOKIE = os.environ.get("DOCWALL_SECURE_COOKIE", "0") == "1"
 COLLEGE_NAME = os.environ.get("DOCWALL_COLLEGE_NAME", "DocWall College Portal")
 
@@ -72,7 +73,12 @@ CREATE TABLE IF NOT EXISTS users (
     roll_no       TEXT,
     group_name    TEXT NOT NULL DEFAULT '',
     password_hash TEXT NOT NULL,
-    created_at    TEXT NOT NULL
+    created_at    TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'active'  -- 'pending' = student request waiting for a teacher
+);
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS sessions (
     token      TEXT PRIMARY KEY,
@@ -165,6 +171,8 @@ def init_db():
     # migrations for databases created by older versions
     if "view_as" not in [r[1] for r in conn.execute("PRAGMA table_info(sessions)")]:
         conn.execute("ALTER TABLE sessions ADD COLUMN view_as INTEGER REFERENCES users(id) ON DELETE SET NULL")
+    if "status" not in [r[1] for r in conn.execute("PRAGMA table_info(users)")]:
+        conn.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
     conn.commit()
     if first_run:
         seed(conn)
@@ -208,6 +216,32 @@ def seed(conn):
         )
     conn.commit()
     print("[seed] Please change the default passwords after the first login.")
+
+
+# --------------------------------------------------------------------------- #
+# Settings (stored in the database, editable by teachers; env vars give the initial values)
+# --------------------------------------------------------------------------- #
+SETTING_DEFAULTS = {
+    "student_signup": "1" if ALLOW_STUDENT_SIGNUP else "0",
+    "allowed_email_domains": ALLOWED_EMAIL_DOMAINS,
+}
+
+
+def get_setting(conn, key):
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else SETTING_DEFAULTS[key]
+
+
+def set_setting(conn, key, value):
+    conn.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (key, str(value)))
+
+
+def allowed_domains(conn):
+    return [d.strip().lower().lstrip("@") for d in get_setting(conn, "allowed_email_domains").split(",") if d.strip()]
+
+
+def settings_payload(conn):
+    return {"student_signup": get_setting(conn, "student_signup") == "1", "allowed_email_domains": allowed_domains(conn)}
 
 
 # --------------------------------------------------------------------------- #
@@ -289,11 +323,14 @@ def public_user(u):
         "roll_no": u["roll_no"],
         "group_name": u["group_name"],
         "created_at": u["created_at"],
+        "status": u["status"] if "status" in u.keys() else "active",
     }
 
 
 def api_config(ctx):
-    return {"college_name": COLLEGE_NAME, "allow_student_signup": ALLOW_STUDENT_SIGNUP, "portal": ctx["handler"].portal}
+    conn = ctx["conn"]
+    return {"college_name": COLLEGE_NAME, "allow_student_signup": get_setting(conn, "student_signup") == "1",
+            "allowed_email_domains": allowed_domains(conn), "portal": ctx["handler"].portal}
 
 
 def api_login(ctx):
@@ -314,6 +351,8 @@ def api_login(ctx):
     ).fetchone()
     if user is None or not verify_password(password, user["password_hash"]):
         raise ApiError(401, f"No {role} account matches those credentials.")
+    if user["status"] == "pending":
+        raise ApiError(403, "Your request has been sent. You can sign in once a teacher approves your account.")
     token = secrets.token_urlsafe(32)
     expires = (datetime.now() + timedelta(days=SESSION_DAYS)).isoformat()
     conn.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)", (token, user["id"], expires))
@@ -324,24 +363,29 @@ def api_login(ctx):
 
 
 def api_register(ctx):
-    if not ALLOW_STUDENT_SIGNUP:
-        raise ApiError(403, "Self sign-up is disabled. Ask your teacher to create your account.")
-    body = ctx["body"]
-    require(body, "name", "email", "roll_no", "group_name", "password")
-    validate_email(body["email"].strip())
+    """Student requests an account with just an email and a password. A teacher must approve it
+    (adding roll number and class) before the student can sign in."""
+    conn, body = ctx["conn"], ctx["body"]
+    if get_setting(conn, "student_signup") != "1":
+        raise ApiError(403, "Sign-up is currently closed. Ask your teacher to create your account.")
+    require(body, "email", "password")
+    email = body["email"].strip().lower()
+    validate_email(email)
+    domains = allowed_domains(conn)
+    if domains and email.rsplit("@", 1)[-1] not in domains:
+        raise ApiError(400, "Please use your " + " or ".join(f"@{d}" for d in domains) + " address.")
     validate_password(body["password"])
-    conn = ctx["conn"]
+    local = email.split("@", 1)[0]
+    name = " ".join(part.capitalize() for part in re.split(r"[._\-+]+|\d+", local) if part) or local
     try:
-        cur = conn.execute(
-            "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at) VALUES (?,?,?,?,?,?,?)",
-            ("student", body["name"].strip(), body["email"].strip().lower(), body["roll_no"].strip().upper(),
-             body["group_name"].strip().upper(), hash_password(body["password"]), now_iso()),
+        conn.execute(
+            "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at, status) VALUES (?,?,?,?,?,?,?,?)",
+            ("student", name, email, None, "", hash_password(body["password"]), now_iso(), "pending"),
         )
     except sqlite3.IntegrityError:
         raise ApiError(409, "An account with that email already exists.")
     conn.commit()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
-    return {"user": public_user(user)}
+    return {"pending": True, "message": "Request sent. Your teacher will approve it, then you can sign in."}
 
 
 def api_logout(ctx):
@@ -368,7 +412,7 @@ def api_preview_start(ctx):
         sid = int(body.get("student_id"))
     except (TypeError, ValueError):
         raise ApiError(400, "Choose a student.")
-    student = conn.execute("SELECT * FROM users WHERE id = ? AND role = 'student'", (sid,)).fetchone()
+    student = conn.execute("SELECT * FROM users WHERE id = ? AND role = 'student' AND status = 'active'", (sid,)).fetchone()
     if student is None:
         raise ApiError(404, "Student not found.")
     conn.execute("UPDATE sessions SET view_as = ? WHERE token = ?", (sid, ctx["handler"].session_token()))
@@ -562,7 +606,8 @@ def api_teacher_overview(ctx):
     stats = {
         "assignments": q("SELECT COUNT(*) FROM assignments"),
         "published": q("SELECT COUNT(*) FROM assignments WHERE status = 'published'"),
-        "students": q("SELECT COUNT(*) FROM users WHERE role = 'student'"),
+        "students": q("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'active'"),
+        "pending_students": q("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'pending'"),
         "teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher'"),
         "submissions": q("SELECT COUNT(*) FROM submissions"),
         "ungraded": q("SELECT COUNT(*) FROM submissions WHERE grade IS NULL"),
@@ -697,7 +742,7 @@ def submissions_for_assignment(conn, aid):
         """SELECT u.id AS student_id, u.name, u.roll_no, u.email, u.group_name,
                   s.id AS submission_id, s.text_answer, s.submitted_at, s.is_late, s.grade, s.feedback, s.graded_at
            FROM users u LEFT JOIN submissions s ON s.student_id = u.id AND s.assignment_id = ?
-           WHERE u.role = 'student' AND (? = '' OR u.group_name = ?)
+           WHERE u.role = 'student' AND u.status = 'active' AND (? = '' OR u.group_name = ?)
            ORDER BY u.group_name, u.roll_no, u.name""",
         (aid, a["target_group"], a["target_group"]),
     ))
@@ -772,13 +817,51 @@ def api_teacher_users(ctx):
         raise ApiError(400, "Invalid role.")
     conn = ctx["conn"]
     users = rows(conn.execute(
-        """SELECT u.id, u.role, u.name, u.email, u.roll_no, u.group_name, u.created_at,
+        """SELECT u.id, u.role, u.name, u.email, u.roll_no, u.group_name, u.created_at, u.status,
                   (SELECT COUNT(*) FROM submissions s WHERE s.student_id = u.id) AS submission_count
-           FROM users u WHERE u.role = ? ORDER BY u.group_name, u.roll_no, u.name""",
+           FROM users u WHERE u.role = ? ORDER BY (u.status = 'pending') DESC, u.group_name, u.roll_no, u.name""",
         (role,),
     ))
     groups = [r[0] for r in conn.execute("SELECT DISTINCT group_name FROM users WHERE role = 'student' AND group_name <> '' ORDER BY group_name")]
     return {"users": users, "groups": groups}
+
+
+def api_teacher_approve_user(ctx):
+    """Approve a pending student request, filling in the details the teacher knows."""
+    conn, body = ctx["conn"], ctx["body"]
+    uid = int(ctx["params"]["id"])
+    u = conn.execute("SELECT * FROM users WHERE id = ? AND role = 'student'", (uid,)).fetchone()
+    if u is None:
+        raise ApiError(404, "Student not found.")
+    require(body, "name", "roll_no", "group_name")
+    conn.execute("UPDATE users SET name=?, roll_no=?, group_name=?, status='active' WHERE id=?",
+                 (body["name"].strip(), body["roll_no"].strip().upper(), body["group_name"].strip().upper(), uid))
+    conn.commit()
+    return {"user": public_user(conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone())}
+
+
+def api_teacher_settings(ctx):
+    return {"settings": settings_payload(ctx["conn"])}
+
+
+def api_teacher_update_settings(ctx):
+    conn, body = ctx["conn"], ctx["body"]
+    if "student_signup" in body:
+        set_setting(conn, "student_signup", "1" if body["student_signup"] else "0")
+    if "allowed_email_domains" in body:
+        raw = body["allowed_email_domains"]
+        items = raw if isinstance(raw, list) else str(raw).split(",")
+        clean = []
+        for d in items:
+            d = d.strip().lower().lstrip("@")
+            if not d:
+                continue
+            if not re.match(r"^[a-z0-9.-]+\.[a-z]{2,}$", d):
+                raise ApiError(400, f"'{d}' is not a valid email domain.")
+            clean.append(d)
+        set_setting(conn, "allowed_email_domains", ",".join(clean))
+    conn.commit()
+    return {"settings": settings_payload(conn)}
 
 
 def api_teacher_groups(ctx):
@@ -889,6 +972,9 @@ ROUTES = [
     ("GET",    r"/api/teacher/users",                            api_teacher_users,               "teacher"),
     ("POST",   r"/api/teacher/users",                            api_teacher_create_user,         "teacher"),
     ("PUT",    r"/api/teacher/users/(?P<id>\d+)",                api_teacher_update_user,         "teacher"),
+    ("PUT",    r"/api/teacher/users/(?P<id>\d+)/approve",        api_teacher_approve_user,        "teacher"),
+    ("GET",    r"/api/teacher/settings",                         api_teacher_settings,            "teacher"),
+    ("PUT",    r"/api/teacher/settings",                         api_teacher_update_settings,     "teacher"),
     ("DELETE", r"/api/teacher/users/(?P<id>\d+)",                api_teacher_delete_user,         "teacher"),
 ]
 COMPILED_ROUTES = [(m, re.compile("^" + p + "$"), h, r) for m, p, h, r in ROUTES]

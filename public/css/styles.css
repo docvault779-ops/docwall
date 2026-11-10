@@ -204,6 +204,7 @@ td .dim { color: var(--text-muted); font-size: 12.5px; }
 .kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-weight: 600; text-align: right; }
 .callout { border-radius: 10px; padding: 12px 14px; font-size: 13.5px; display: flex; gap: 10px; align-items: flex-start; }
 .callout svg { width: 17px; height: 17px; flex: none; margin-top: 1px; }
+h3 > svg { width: 17px; height: 17px; flex: none; }
 .callout.info { background: var(--primary-light); color: #1e40af; } .callout.ok { background: var(--success-bg); color: #047857; }
 .callout.warn { background: var(--warning-bg); color: #92400e; } .callout.bad { background: var(--danger-bg); color: #be123c; }
 

@@ -66,9 +66,20 @@ assignment they choose who can see it: **All students** or one class. Students o
 see assignments for their own class (or for everyone). The teacher's submission list shows
 every student of that class, including the ones who have **not** submitted.
 
-Students can sign up themselves from the student login page (they enter their roll number
-and class). If you'd rather have the department create accounts, set
-`DOCWALL_STUDENT_SIGNUP=0` and add students from **Teacher → Students → Add student**.
+## How students join
+
+Students never get in on their own. The flow is:
+
+1. On the student portal the student chooses **Request a student account** and enters only an
+   **email address and a password**. By default the email must be a `@gmail.com` address; the
+   teacher can change the accepted domains (for example to the college's own domain).
+2. The request shows up in the teacher portal under **Students → Account requests** (with a
+   badge on the Students menu and a notice on the dashboard). Until a teacher acts, the student
+   cannot sign in and sees "waiting for approval" if they try.
+3. The teacher clicks **Approve**, fills in the student's name, roll number and class/section,
+   and the account becomes active. **Reject** removes the request.
+4. Teachers can also create accounts directly with **Add student**, or switch requests off
+   entirely in **Settings → Student sign-up** once everyone has joined.
 
 ---
 
@@ -82,7 +93,8 @@ and class). If you'd rather have the department create accounts, set
 | `DOCWALL_DATA` | `./data` | Where the SQLite DB and uploads live. Point this at a disk that gets backed up. |
 | `DOCWALL_MAX_UPLOAD_MB` | `25` | Max size of a single uploaded file. |
 | `DOCWALL_SESSION_DAYS` | `7` | How long a login lasts. |
-| `DOCWALL_STUDENT_SIGNUP` | `1` | `0` disables self sign-up for students. |
+| `DOCWALL_STUDENT_SIGNUP` | `1` | Initial value of the "students may request an account" switch. Teachers change it later in **Settings**. |
+| `DOCWALL_ALLOWED_EMAIL_DOMAINS` | `gmail.com` | Initial list of email domains accepted for student requests (comma separated, empty = any). Teachers change it later in **Settings**. |
 | `DOCWALL_SECURE_COOKIE` | `0` | Set to `1` when the site is served over HTTPS. |
 | `DOCWALL_COLLEGE_NAME` | `DocWall College Portal` | Shown in the browser tab on the landing page. |
 | `DOCWALL_ADMIN_EMAIL` | `teacher@college.edu` | First teacher account (first run only). |
@@ -168,9 +180,11 @@ All endpoints return JSON; the session is an HttpOnly cookie.
 | Method & path | Role | Purpose |
 |---------------|------|---------|
 | `POST /api/auth/login` | – | `{role, identifier, password}`; role must match the account; `teacher` is refused on the student portal |
-| `POST /api/auth/register` | – | student self sign-up (if enabled) |
+| `POST /api/auth/register` | – | `{email, password}` student account request; created as *pending* until a teacher approves |
 | `POST /api/auth/logout`, `GET /api/me`, `POST /api/me/password` | any | session + password |
 | `POST /api/preview` `{student_id}`, `DELETE /api/preview` | teacher | start / stop viewing the student portal as that student (student routes then run read-only as them) |
+| `PUT /api/teacher/users/{id}/approve` `{name, roll_no, group_name}` | teacher | approve a pending student request (`DELETE /api/teacher/users/{id}` rejects it) |
+| `GET/PUT /api/teacher/settings` | teacher | `{student_signup, allowed_email_domains}` |
 | `GET /api/student/assignments[/{id}]` | student | published assignments for the student's class |
 | `POST /api/student/assignments/{id}/submit` | student | `{text_answer, files:[{name,data(base64)}]}` |
 | `GET /api/files/{assignment|submission}/{id}` | any (checked) | download a file |

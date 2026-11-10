@@ -36,22 +36,18 @@
             <div class="field"><label for="l-pw">Password</label><input id="l-pw" name="password" type="password" autocomplete="current-password" required></div>
             <button class="btn btn-primary btn-lg btn-block" type="submit">Sign in</button>
           </form>
-          <p class="auth-switch" id="signup-link" hidden>New here? <button class="link-btn" id="show-signup">Create a student account</button></p>
-          <p class="auth-switch" id="no-signup" hidden>Don't have an account? Ask your teacher to create one for you.</p>
+          <div class="callout ok" id="signup-done" hidden style="margin-top:16px"></div>
+          <p class="auth-switch" id="signup-link" hidden>New here? <button class="link-btn" id="show-signup">Request a student account</button></p>
+          <p class="auth-switch" id="no-signup" hidden>Sign-up is closed. Ask your teacher to create your account.</p>
         </section>
         <section id="signup-view" hidden>
-          <h1>Create student account</h1>
-          <p class="sub">Your teacher will see you under the class/section you enter here.</p>
+          <h1>Request a student account</h1>
+          <p class="sub">Enter your email and choose a password. A teacher will approve your request, then you can sign in.</p>
           <form id="signup-form" novalidate>
             <div class="form-error" id="signup-error" hidden></div>
-            <div class="field"><label for="s-name">Full name</label><input id="s-name" name="name" required></div>
-            <div class="grid-2">
-              <div class="field"><label for="s-roll">Roll number</label><input id="s-roll" name="roll_no" placeholder="e.g. CS2301" required></div>
-              <div class="field"><label for="s-group">Class / section</label><input id="s-group" name="group_name" placeholder="e.g. CSE-3A" required></div>
-            </div>
-            <div class="field"><label for="s-email">College email</label><input id="s-email" name="email" type="email" required></div>
-            <div class="field"><label for="s-pw">Password</label><input id="s-pw" name="password" type="password" minlength="6" required><span class="hint">At least 6 characters</span></div>
-            <button class="btn btn-primary btn-lg btn-block" type="submit">Create account</button>
+            <div class="field"><label for="s-email">Email</label><input id="s-email" name="email" type="email" autocomplete="email" placeholder="yourname@gmail.com" required autofocus><span class="hint" id="domain-hint">Use the email address your college asked for.</span></div>
+            <div class="field"><label for="s-pw">Password</label><input id="s-pw" name="password" type="password" minlength="6" autocomplete="new-password" required><span class="hint">At least 6 characters</span></div>
+            <button class="btn btn-primary btn-lg btn-block" type="submit">Send request</button>
           </form>
           <p class="auth-switch">Already registered? <button class="link-btn" id="show-login">Sign in</button></p>
         </section>

@@ -14,8 +14,13 @@ window.Auth = {
         $('#no-signup').hidden = c.allow_student_signup;
         // The teacher login is only mentioned on the combined portal, never on the student-only one.
         const t = $('#teacher-link'); if (t) t.hidden = c.portal !== 'both';
+        const d = c.allowed_email_domains || [];
+        if (d.length) {
+          $('#domain-hint').textContent = `Use your ${d.map((x) => '@' + x).join(' or ')} address.`;
+          $('#s-email').placeholder = `yourname@${d[0]}`;
+        }
       }).catch(() => {});
-      $('#show-signup').onclick = () => { $('#login-view').hidden = true; $('#signup-view').hidden = false; $('#s-name').focus(); };
+      $('#show-signup').onclick = () => { $('#login-view').hidden = true; $('#signup-view').hidden = false; $('#s-email').focus(); };
       $('#show-login').onclick = () => { $('#signup-view').hidden = true; $('#login-view').hidden = false; $('#l-id').focus(); };
       $('#signup-form').onsubmit = async (e) => {
         e.preventDefault();
@@ -23,9 +28,14 @@ window.Auth = {
         const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
         try {
           const body = Object.fromEntries(new FormData(e.target).entries());
-          await UI.api('POST', '/api/auth/register', body);
-          await UI.api('POST', '/api/auth/login', { role, identifier: body.email, password: body.password });
-          location.href = '/student';
+          const res = await UI.api('POST', '/api/auth/register', body);
+          // Request recorded; the student can sign in once a teacher approves it.
+          $('#signup-view').hidden = true; $('#login-view').hidden = false;
+          const done = $('#signup-done');
+          done.innerHTML = `${UI.icon('checkCircle')}<div>${UI.esc(res.message || 'Request sent. A teacher will approve your account; after that you can sign in here.')}</div>`;
+          done.hidden = false;
+          e.target.reset(); btn.disabled = false;
+          $('#l-id').value = body.email;
         } catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; }
       };
     }
