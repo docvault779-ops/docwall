@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS assignments (
     description        TEXT NOT NULL DEFAULT '',
     target_group       TEXT NOT NULL DEFAULT '',
     due_at             TEXT NOT NULL,
-    max_marks          REAL NOT NULL DEFAULT 100,
+    max_marks          REAL,                          -- NULL = no marks, feedback only
     status             TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','published')),
     allow_late         INTEGER NOT NULL DEFAULT 0,
     accept_submissions INTEGER NOT NULL DEFAULT 1,
@@ -172,6 +172,17 @@ def init_db():
         conn.execute("ALTER TABLE sessions ADD COLUMN view_as INTEGER REFERENCES users(id) ON DELETE SET NULL")
     if "status" not in [r[1] for r in conn.execute("PRAGMA table_info(users)")]:
         conn.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
+    col = next((r for r in conn.execute("PRAGMA table_info(assignments)") if r[1] == "max_marks"), None)
+    if col is not None and col[3]:  # NOT NULL in older databases -> make max marks optional
+        create_sql = SCHEMA.split("CREATE TABLE IF NOT EXISTS assignments (")[1].split(";")[0]
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.executescript(
+            "CREATE TABLE assignments_new (" + create_sql + ";"
+            "INSERT INTO assignments_new SELECT * FROM assignments;"
+            "DROP TABLE assignments;"
+            "ALTER TABLE assignments_new RENAME TO assignments;"
+        )
+        conn.execute("PRAGMA foreign_keys = ON")
     conn.commit()
     if first_run:
         seed(conn)
@@ -484,7 +495,7 @@ def student_assignment_query(user, extra_where="", extra_args=()):
 
 def decorate_student_assignment(conn, a):
     a["overdue"] = is_past(a["due_at"])
-    if a["grade"] is not None:
+    if a["graded_at"]:
         a["state"] = "graded"
     elif a["submission_id"]:
         a["state"] = "submitted"
@@ -531,7 +542,7 @@ def api_student_submit(ctx):
         raise ApiError(404, "Assignment not found.")
     a = decorate_student_assignment(conn, row_to_dict(a))
     if not a["can_submit"]:
-        if a["grade"] is not None:
+        if a["graded_at"]:
             raise ApiError(403, "This submission has already been graded and is locked.")
         if not a["accept_submissions"]:
             raise ApiError(403, "The teacher has closed submissions for this assignment.")
@@ -569,7 +580,7 @@ def teacher_assignment_rows(conn, where="", args=()):
     sql = f"""
         SELECT a.*, u.name AS created_by_name,
                (SELECT COUNT(*) FROM submissions s WHERE s.assignment_id = a.id) AS submission_count,
-               (SELECT COUNT(*) FROM submissions s WHERE s.assignment_id = a.id AND s.grade IS NULL) AS ungraded_count,
+               (SELECT COUNT(*) FROM submissions s WHERE s.assignment_id = a.id AND s.graded_at IS NULL) AS ungraded_count,
                (SELECT COUNT(*) FROM users st WHERE st.role = 'student' AND (a.target_group = '' OR st.group_name = a.target_group)) AS student_count
         FROM assignments a LEFT JOIN users u ON u.id = a.created_by
         {where}
@@ -592,7 +603,7 @@ def api_teacher_overview(ctx):
         "teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'active'"),
         "pending_teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'pending'"),
         "submissions": q("SELECT COUNT(*) FROM submissions"),
-        "ungraded": q("SELECT COUNT(*) FROM submissions WHERE grade IS NULL"),
+        "ungraded": q("SELECT COUNT(*) FROM submissions WHERE graded_at IS NULL"),
     }
     recent = rows(conn.execute(
         """SELECT s.id, s.submitted_at, s.is_late, s.grade, a.id AS assignment_id, a.title, a.max_marks,
@@ -621,12 +632,16 @@ def parse_assignment_body(body):
         datetime.fromisoformat(body["due_at"])
     except ValueError:
         raise ApiError(400, "Due date is not valid.")
-    try:
-        max_marks = float(body.get("max_marks") or 100)
-    except (TypeError, ValueError):
-        raise ApiError(400, "Max marks must be a number.")
-    if max_marks <= 0:
-        raise ApiError(400, "Max marks must be greater than zero.")
+    raw_marks = body.get("max_marks")
+    if raw_marks in (None, "") or (isinstance(raw_marks, str) and not raw_marks.strip()):
+        max_marks = None  # optional: no marks, feedback only
+    else:
+        try:
+            max_marks = float(raw_marks)
+        except (TypeError, ValueError):
+            raise ApiError(400, "Max marks must be a number.")
+        if max_marks <= 0:
+            raise ApiError(400, "Max marks must be greater than zero.")
     status = body.get("status") or "draft"
     if status not in ("draft", "published"):
         raise ApiError(400, "Status must be draft or published.")
@@ -736,7 +751,7 @@ def submissions_for_assignment(conn, aid):
             files_by_sub.setdefault(f["submission_id"], []).append(f)
     for s in students:
         s["files"] = files_by_sub.get(s["submission_id"], [])
-        s["state"] = "graded" if s["grade"] is not None else ("submitted" if s["submission_id"] else "missing")
+        s["state"] = "graded" if s["graded_at"] else ("submitted" if s["submission_id"] else "missing")
     return a, students
 
 
@@ -749,10 +764,11 @@ def api_teacher_export(ctx):
     a, students = submissions_for_assignment(ctx["conn"], int(ctx["params"]["id"]))
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["Roll No", "Name", "Group", "Email", "Status", "Submitted At", "Late", "Grade", f"Max Marks ({a['max_marks']:g})", "Feedback"])
+    w.writerow(["Roll No", "Name", "Group", "Email", "Status", "Submitted At", "Late", "Grade", "Max Marks", "Feedback"])
+    max_marks = "" if a["max_marks"] is None else f"{a['max_marks']:g}"
     for s in students:
         w.writerow([s["roll_no"] or "", s["name"], s["group_name"], s["email"], s["state"], s["submitted_at"] or "",
-                    "yes" if s["is_late"] else "", "" if s["grade"] is None else f"{s['grade']:g}", f"{a['max_marks']:g}", s["feedback"] or ""])
+                    "yes" if s["is_late"] else "", "" if s["grade"] is None else f"{s['grade']:g}", max_marks, s["feedback"] or ""])
     fname = safe_filename(f"{a['title']}-marks.csv")
     ctx["handler"].send_bytes(buf.getvalue().encode("utf-8-sig"), "text/csv; charset=utf-8", fname)
     return None
@@ -772,12 +788,16 @@ def api_teacher_grade(ctx):
             grade_val = float(grade)
         except (TypeError, ValueError):
             raise ApiError(400, "Grade must be a number.")
-        if grade_val < 0 or grade_val > s["max_marks"]:
+        if grade_val < 0:
+            raise ApiError(400, "Grade cannot be negative.")
+        if s["max_marks"] is not None and grade_val > s["max_marks"]:
             raise ApiError(400, f"Grade must be between 0 and {s['max_marks']:g}.")
     feedback = (body.get("feedback") or "").strip()
+    # An assignment without max marks counts as graded once feedback (or a number) is saved.
+    graded = grade_val is not None or (s["max_marks"] is None and bool(feedback))
     conn.execute(
         "UPDATE submissions SET grade = ?, feedback = ?, graded_at = ?, graded_by = ? WHERE id = ?",
-        (grade_val, feedback, now_iso() if grade_val is not None else None, ctx["user"]["id"] if grade_val is not None else None, sid),
+        (grade_val, feedback, now_iso() if graded else None, ctx["user"]["id"] if graded else None, sid),
     )
     conn.commit()
     return {"ok": True}

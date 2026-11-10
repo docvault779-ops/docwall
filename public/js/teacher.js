@@ -1,6 +1,7 @@
 /* Teacher portal: full control over assignments, submissions, grading and accounts. */
 (async function () {
   const { icon, esc, api, fmtDate, relDue, fmtSize, fileItem, toast, modal, closeModal, confirmDialog, emptyState } = UI;
+  const fmtGrade = (grade, max) => grade == null ? '' : max != null ? `${grade}/${max}` : `${grade}`;
   const user = await UI.requireUser('teacher');
   if (!user) return;
 
@@ -109,7 +110,7 @@
       </tbody></table></div>` : emptyState('calendar', 'No upcoming deadlines', 'Publish an assignment to see it here.')}
       <div class="section-title">${icon('inbox')} Recent submissions</div>
       ${recent_submissions.length ? `<div class="card table-wrap"><table><thead><tr><th>Student</th><th>Assignment</th><th>Submitted</th><th>Status</th></tr></thead><tbody>
-        ${recent_submissions.map((s) => `<tr><td><span class="strong">${esc(s.student_name)}</span><div class="dim">${esc(s.roll_no || '')} ${s.group_name ? '· ' + esc(s.group_name) : ''}</div></td><td><a href="#/assignments/${s.assignment_id}">${esc(s.title)}</a></td><td>${fmtDate(s.submitted_at)}${s.is_late ? ' <span class="badge late">Late</span>' : ''}</td><td>${s.grade != null ? `<span class="badge graded">${s.grade}/${s.max_marks}</span>` : '<span class="badge submitted">To grade</span>'}</td></tr>`).join('')}
+        ${recent_submissions.map((s) => `<tr><td><span class="strong">${esc(s.student_name)}</span><div class="dim">${esc(s.roll_no || '')} ${s.group_name ? '· ' + esc(s.group_name) : ''}</div></td><td><a href="#/assignments/${s.assignment_id}">${esc(s.title)}</a></td><td>${fmtDate(s.submitted_at)}${s.is_late ? ' <span class="badge late">Late</span>' : ''}</td><td>${s.grade != null ? `<span class="badge graded">${fmtGrade(s.grade, s.max_marks)}</span>` : '<span class="badge submitted">To grade</span>'}</td></tr>`).join('')}
       </tbody></table></div>` : emptyState('inbox', 'No submissions yet', 'Student submissions will appear here as they come in.')}`;
   }
 
@@ -127,7 +128,7 @@
       <div class="chips">${FILTERS.map(([k, l, fn]) => `<a class="chip ${k === filter ? 'active' : ''}" href="#/assignments${k === 'all' ? '' : '/filter/' + k}">${l}<span class="n">${all.filter(fn).length}</span></a>`).join('')}</div>
       ${items.length ? `<div class="card table-wrap"><table><thead><tr><th>Assignment</th><th>Target</th><th>Due</th><th>Status</th><th>Submissions</th><th></th></tr></thead><tbody>
         ${items.map((a) => `<tr>
-          <td><a class="strong" href="#/assignments/${a.id}">${esc(a.title)}</a><div class="dim">${esc(a.subject || 'General')} · ${a.max_marks} marks${a.files.length ? ` · ${a.files.length} file${a.files.length > 1 ? 's' : ''}` : ''}</div></td>
+          <td><a class="strong" href="#/assignments/${a.id}">${esc(a.title)}</a><div class="dim">${esc(a.subject || 'General')}${a.max_marks != null ? ` · ${a.max_marks} marks` : ''}${a.files.length ? ` · ${a.files.length} file${a.files.length > 1 ? 's' : ''}` : ''}</div></td>
           <td>${groupLabel(a.target_group)}</td>
           <td>${fmtDate(a.due_at)}<div class="dim">${relDue(a.due_at)}</div></td>
           <td>${statusBadge(a)}</td>
@@ -166,7 +167,7 @@
     paintNav('assignments');
     view.innerHTML = '<div class="loading">Loading…</div>';
     const [{ groups }, existing] = await Promise.all([api('GET', '/api/teacher/groups'), id ? api('GET', `/api/teacher/assignments/${id}`).then((r) => r.assignment) : null]);
-    const a = existing || { title: '', subject: '', description: '', target_group: '', due_at: '', max_marks: 100, status: 'draft', allow_late: 0, accept_submissions: 1, files: [] };
+    const a = existing || { title: '', subject: '', description: '', target_group: '', due_at: '', max_marks: null, status: 'draft', allow_late: 0, accept_submissions: 1, files: [] };
     const removeIds = new Set();
     const defaultDue = (() => { const d = new Date(Date.now() + 7 * 86400000); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T23:59`; })();
     const dueLocal = a.due_at ? a.due_at.slice(0, 16) : defaultDue;
@@ -179,7 +180,7 @@
           <div class="field"><label>Title *</label><input name="title" required maxlength="200" value="${esc(a.title)}" placeholder="e.g. Unit 3 – Data Structures lab report"></div>
           <div class="grid-2">
             <div class="field"><label>Subject</label><input name="subject" maxlength="100" value="${esc(a.subject)}" placeholder="e.g. Data Structures"></div>
-            <div class="field"><label>Max marks *</label><input name="max_marks" type="number" min="1" step="0.5" required value="${a.max_marks}"></div>
+            <div class="field"><label>Max marks</label><input name="max_marks" type="number" min="0.5" step="0.5" value="${a.max_marks ?? ''}" placeholder="Optional – leave empty for feedback only"></div>
           </div>
           <div class="field"><label>Instructions</label><textarea name="description" rows="10" placeholder="Describe what students need to do, how to format their work, and how it will be evaluated.">${esc(a.description)}</textarea></div>
           <div class="field"><label>Attachments</label>
@@ -246,7 +247,7 @@
         <div><h1>${esc(a.title)}</h1>
           <div class="meta-row" style="margin-top:8px">
             <span>${statusBadge(full)}</span><span>${icon('users')}${a.target_group ? esc(a.target_group) : 'All students'}</span>
-            <span>${icon('calendar')}Due ${fmtDate(a.due_at)} · ${relDue(a.due_at)}</span><span>${icon('star')}${a.max_marks} marks</span>
+            <span>${icon('calendar')}Due ${fmtDate(a.due_at)} · ${relDue(a.due_at)}</span><span>${icon('star')}${a.max_marks != null ? `${a.max_marks} marks` : 'No marks · feedback only'}</span>
             ${full.files.length ? `<span>${icon('file')}${full.files.length} attachment${full.files.length > 1 ? 's' : ''}</span>` : ''}
           </div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -267,7 +268,7 @@
           <td><span class="badge ${s.state}">${{ submitted: 'To grade', graded: 'Graded', missing: 'Not submitted' }[s.state]}</span>${s.is_late ? ' <span class="badge late">Late</span>' : ''}</td>
           <td>${s.submitted_at ? fmtDate(s.submitted_at) : '<span class="dim">—</span>'}</td>
           <td>${s.files.length ? s.files.map((f) => `<a href="/api/files/submission/${f.id}" download="${esc(f.filename)}" title="${esc(f.filename)} (${fmtSize(f.size)})" class="dim" style="display:block;color:var(--primary)">${icon('download').replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px;margin-right:3px"')}${esc(f.filename)}</a>`).join('') : '<span class="dim">—</span>'}</td>
-          <td>${s.grade != null ? `<span class="strong">${s.grade}</span> <span class="dim">/ ${a.max_marks}</span>` : '<span class="dim">—</span>'}</td>
+          <td>${s.grade != null ? `<span class="strong">${s.grade}</span>${a.max_marks != null ? ` <span class="dim">/ ${a.max_marks}</span>` : ''}` : s.state === 'graded' ? '<span class="dim">Feedback</span>' : '<span class="dim">—</span>'}</td>
           <td class="actions">${s.submission_id ? `<button class="btn btn-sm ${s.state === 'submitted' ? 'btn-primary' : ''}" data-review="${s.submission_id}">${icon('edit')} ${s.state === 'graded' ? 'Edit grade' : 'Grade'}</button>` : ''}</td>
         </tr>`).join('')}
       </tbody></table></div>` : emptyState('users', 'Nobody here', filter === 'all' ? 'No student accounts match this assignment’s class yet.' : 'No students in this category.')}`;
@@ -293,7 +294,7 @@
         ${s.files.length ? `<div class="file-list" style="margin-bottom:14px">${s.files.map((f) => fileItem(f, 'submission')).join('')}</div>` : '<div class="hint" style="margin-bottom:14px">No files attached.</div>'}
         <form id="grade-form">
           <div class="grid-2">
-            <div class="field"><label>Marks (out of ${a.max_marks})</label><input name="grade" type="number" min="0" max="${a.max_marks}" step="0.5" value="${s.grade ?? ''}" placeholder="Leave empty to un-grade"></div>
+            <div class="field"><label>${a.max_marks != null ? `Marks (out of ${a.max_marks})` : 'Marks (optional)'}</label><input name="grade" type="number" min="0" ${a.max_marks != null ? `max="${a.max_marks}"` : ''} step="0.5" value="${s.grade ?? ''}" placeholder="${a.max_marks != null ? 'Leave empty to un-grade' : 'No marks for this assignment'}"></div>
           </div>
           <div class="field"><label>Feedback for the student</label><textarea name="feedback" rows="4" placeholder="What was good, what to improve…">${esc(s.feedback || '')}</textarea></div>
         </form>`,

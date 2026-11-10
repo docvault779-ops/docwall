@@ -55,7 +55,7 @@
       <p class="desc">${esc(a.description || 'No description provided.')}</p>
       <div class="foot">
         <span style="${soon ? 'color:var(--danger);font-weight:600' : ''}">${icon('calendar')}${fmtDate(a.due_at)}</span>
-        <span>${a.files.length ? `${icon('file')}${a.files.length} file${a.files.length > 1 ? 's' : ''}` : ''}${a.grade != null ? `${icon('star')}${a.grade}/${a.max_marks}` : ''}</span>
+        <span>${a.files.length ? `${icon('file')}${a.files.length} file${a.files.length > 1 ? 's' : ''}` : ''}${a.grade != null ? `${icon('star')}${a.grade}${a.max_marks != null ? '/' + a.max_marks : ''}` : ''}</span>
       </div></a>`;
   }
 
@@ -97,11 +97,12 @@
   function renderGrades() {
     paintNav('grades');
     const graded = state.assignments.filter((a) => a.state === 'graded');
-    const total = graded.reduce((s, a) => s + a.grade, 0), max = graded.reduce((s, a) => s + a.max_marks, 0);
+    const scored = graded.filter((a) => a.grade != null && a.max_marks != null);
+    const total = scored.reduce((s, a) => s + a.grade, 0), max = scored.reduce((s, a) => s + a.max_marks, 0);
     view.innerHTML = `
-      <div class="page-head"><div><h1>${icon('star')} Grades</h1><p class="sub">${graded.length ? `${graded.length} graded · overall ${total}/${max} (${Math.round((total / max) * 100)}%)` : 'Nothing has been graded yet'}</p></div></div>
+      <div class="page-head"><div><h1>${icon('star')} Grades</h1><p class="sub">${graded.length ? `${graded.length} graded${max ? ` · overall ${total}/${max} (${Math.round((total / max) * 100)}%)` : ''}` : 'Nothing has been graded yet'}</p></div></div>
       ${graded.length ? `<div class="card table-wrap"><table><thead><tr><th>Assignment</th><th>Subject</th><th>Submitted</th><th>Marks</th><th>Feedback</th></tr></thead><tbody>
-        ${graded.map((a) => `<tr><td><a href="#/assignment/${a.id}" class="strong">${esc(a.title)}</a></td><td>${esc(a.subject || '—')}</td><td>${fmtDate(a.submitted_at)}${a.is_late ? ' <span class="badge late">Late</span>' : ''}</td><td><span class="strong">${a.grade}</span> <span class="dim">/ ${a.max_marks}</span></td><td class="dim">${esc(a.feedback || '—')}</td></tr>`).join('')}
+        ${graded.map((a) => `<tr><td><a href="#/assignment/${a.id}" class="strong">${esc(a.title)}</a></td><td>${esc(a.subject || '—')}</td><td>${fmtDate(a.submitted_at)}${a.is_late ? ' <span class="badge late">Late</span>' : ''}</td><td>${a.grade != null ? `<span class="strong">${a.grade}</span>${a.max_marks != null ? ` <span class="dim">/ ${a.max_marks}</span>` : ''}` : '<span class="dim">Feedback only</span>'}</td><td class="dim">${esc(a.feedback || '—')}</td></tr>`).join('')}
       </tbody></table></div>` : emptyState('star', 'No grades yet', 'Marks and feedback will appear here once your teacher grades your work.')}`;
   }
 
@@ -113,7 +114,7 @@
     catch (e) { view.innerHTML = emptyState('alert', 'Assignment not available', e.message); return; }
 
     const statusCallout = a.state === 'graded'
-      ? `<div class="callout ok">${icon('star')}<div><strong>Graded: ${a.grade} / ${a.max_marks}</strong>${a.feedback ? `<div style="margin-top:4px">${esc(a.feedback)}</div>` : ''}<div class="hint" style="margin-top:4px">Graded on ${fmtDate(a.graded_at)}</div></div></div>`
+      ? `<div class="callout ok">${icon('star')}<div><strong>${a.grade != null ? `Graded: ${a.grade}${a.max_marks != null ? ` / ${a.max_marks}` : ''}` : 'Reviewed by your teacher'}</strong>${a.feedback ? `<div style="margin-top:4px">${esc(a.feedback)}</div>` : ''}<div class="hint" style="margin-top:4px">Graded on ${fmtDate(a.graded_at)}</div></div></div>`
       : a.state === 'submitted'
         ? `<div class="callout ok">${icon('checkCircle')}<div><strong>Submitted</strong> on ${fmtDate(a.submitted_at)}${a.is_late ? ' (late)' : ''}. ${a.can_submit ? 'You can resubmit until the deadline; the new submission replaces the old one.' : 'Waiting for your teacher to grade it.'}</div></div>`
         : a.state === 'overdue'
@@ -128,7 +129,7 @@
             <span>${icon('tag')}${esc(a.subject || 'General')}</span>
             <span>${icon('users')}${a.target_group ? esc(a.target_group) : 'All students'}</span>
             <span>${icon('calendar')}Due ${fmtDate(a.due_at)}</span>
-            <span>${icon('star')}${a.max_marks} marks</span>
+            ${a.max_marks != null ? `<span>${icon('star')}${a.max_marks} marks</span>` : ''}
           </div></div>
         ${badge(a.state)}
       </div>
@@ -165,7 +166,7 @@
       </div>`;
 
     document.getElementById('copy-desc').onclick = () => {
-      const text = `${a.title}\nSubject: ${a.subject || 'General'}\nDue: ${fmtDate(a.due_at)}\nMax marks: ${a.max_marks}\n\n${a.description}`;
+      const text = `${a.title}\nSubject: ${a.subject || 'General'}\nDue: ${fmtDate(a.due_at)}${a.max_marks != null ? `\nMax marks: ${a.max_marks}` : ''}\n\n${a.description}`;
       UI.copyText(text).then(() => toast('Instructions copied to clipboard', 'ok')).catch(() => toast('Could not copy', 'bad'));
     };
     const form = document.getElementById('submit-form');
