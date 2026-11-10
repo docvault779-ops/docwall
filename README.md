@@ -48,14 +48,13 @@ This starts both portals:
 * Student portal: <http://localhost:8080>
 * Teacher portal: <http://localhost:8081>
 
-On the very first run DocVault creates `data/docwall.db` and prints the default accounts:
+On the very first run DocVault creates `data/docwall.db` and prints the first teacher account:
 
 | Role | Email | Password | Notes |
 |------|-------|----------|-------|
 | Teacher | `teacher@college.edu` | `Teacher@123` | Change this immediately (Profile → Change password). |
-| Student (demo) | `student@college.edu` (roll `CS2301`) | `Student@123` | Delete it from Teacher → Students when you go live. |
 
-Set `DOCWALL_SEED_DEMO=0` before the first run to skip the demo student and the sample assignment.
+No students or assignments are created: students join by request and teachers create the assignments.
 
 ---
 
@@ -116,7 +115,6 @@ teacher either gets an account from a colleague (**Teachers → Add teacher**) o
 | `DOCWALL_COLLEGE_NAME` | `DocVault College Portal` | Shown in the browser tab on the landing page. |
 | `DOCWALL_ADMIN_EMAIL` | `teacher@college.edu` | First teacher account (first run only). |
 | `DOCWALL_ADMIN_PASSWORD` | `Teacher@123` | Its password (first run only). |
-| `DOCWALL_SEED_DEMO` | `1` | `0` skips the demo student + sample assignment (first run only). |
 
 ---
 
@@ -154,7 +152,7 @@ teacher either gets an account from a colleague (**Teachers → Add teacher**) o
    department (or be limited to the campus network with an Nginx `allow`/`deny` block).
 
 5. **First login**: open the **teacher** address, sign in with the admin account,
-   change the password, add the other teachers under **Teachers**, and delete the demo student.
+   change the password and add the other teachers under **Teachers**.
 
 ### Without root access / on Windows
 

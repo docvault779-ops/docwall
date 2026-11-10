@@ -53,7 +53,6 @@ COLLEGE_NAME = os.environ.get("DOCWALL_COLLEGE_NAME", "DocVault College Portal")
 
 DEFAULT_TEACHER_EMAIL = os.environ.get("DOCWALL_ADMIN_EMAIL", "teacher@college.edu")
 DEFAULT_TEACHER_PASSWORD = os.environ.get("DOCWALL_ADMIN_PASSWORD", "Teacher@123")
-SEED_DEMO_DATA = os.environ.get("DOCWALL_SEED_DEMO", "1") != "0"
 
 COOKIE_NAME = "docwall_session"
 ROLES = ("student", "teacher")
@@ -186,36 +185,8 @@ def seed(conn):
         ("teacher", "Default Teacher", DEFAULT_TEACHER_EMAIL, None, "", hash_password(DEFAULT_TEACHER_PASSWORD), ts),
     )
     print(f"[seed] Created teacher account  -> {DEFAULT_TEACHER_EMAIL} / {DEFAULT_TEACHER_PASSWORD}")
-    if SEED_DEMO_DATA:
-        conn.execute(
-            "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at) VALUES (?,?,?,?,?,?,?)",
-            ("student", "Demo Student", "student@college.edu", "CS2301", "CSE-3A", hash_password("Student@123"), ts),
-        )
-        print("[seed] Created demo student     -> student@college.edu / Student@123  (roll CS2301, group CSE-3A)")
-        due = (datetime.now() + timedelta(days=7)).replace(hour=23, minute=59, second=0, microsecond=0)
-        conn.execute(
-            """INSERT INTO assignments (title, subject, description, target_group, due_at, max_marks, status,
-               allow_late, accept_submissions, created_by, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                "Welcome to DocVault - sample assignment",
-                "Orientation",
-                "This is a sample assignment created on first run.\n\n"
-                "Teachers: edit or delete it from the Assignments page.\n"
-                "Students: open it, read the instructions, attach your work and press Submit.",
-                "",
-                due.isoformat(timespec="minutes"),
-                10,
-                "published",
-                1,
-                1,
-                1,
-                ts,
-                ts,
-            ),
-        )
     conn.commit()
-    print("[seed] Please change the default passwords after the first login.")
+    print("[seed] Please change this password after the first login.")
 
 
 # --------------------------------------------------------------------------- #

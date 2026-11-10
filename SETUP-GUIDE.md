@@ -54,8 +54,8 @@ The server prints two addresses:
     Teacher portal : http://localhost:8081
 
 Open the teacher one, sign in with the default teacher account printed in the terminal (also
-listed in README.md), change its password under **Profile**, and look around. A demo student
-and a sample assignment are created so you can test the student side too.
+listed in README.md), change its password under **Profile**, and look around. The portal starts
+empty: create an assignment, then open **Student view** to see it the way a student would.
 
 Stop the server with Ctrl+C.
 
