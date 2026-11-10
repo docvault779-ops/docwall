@@ -51,8 +51,9 @@ ALLOWED_EMAIL_DOMAINS = os.environ.get("DOCWALL_ALLOWED_EMAIL_DOMAINS", "gmail.c
 SECURE_COOKIE = os.environ.get("DOCWALL_SECURE_COOKIE", "0") == "1"
 COLLEGE_NAME = os.environ.get("DOCWALL_COLLEGE_NAME", "DocVault College Portal")
 
-DEFAULT_TEACHER_EMAIL = os.environ.get("DOCWALL_ADMIN_EMAIL", "teacher@college.edu")
-DEFAULT_TEACHER_PASSWORD = os.environ.get("DOCWALL_ADMIN_PASSWORD", "Teacher@123")
+# Teachers sign themselves up with this code (no approval). Initial value only; teachers change it in Settings.
+# Leave unset and a random code is generated on the first run and printed at every start.
+TEACHER_CODE_ENV = os.environ.get("DOCWALL_TEACHER_CODE", "").strip()
 
 COOKIE_NAME = "docwall_session"
 ROLES = ("student", "teacher")
@@ -183,21 +184,22 @@ def init_db():
             "ALTER TABLE assignments_new RENAME TO assignments;"
         )
         conn.execute("PRAGMA foreign_keys = ON")
+    if conn.execute("SELECT 1 FROM settings WHERE key = 'teacher_code'").fetchone() is None:
+        set_setting(conn, "teacher_code", TEACHER_CODE_ENV or new_teacher_code())
+        print("[setup] Teacher access code created. Share it with the teachers; they sign up with it on the teacher portal.")
     conn.commit()
-    if first_run:
-        seed(conn)
     conn.close()
 
 
-def seed(conn):
-    ts = now_iso()
-    conn.execute(
-        "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at) VALUES (?,?,?,?,?,?,?)",
-        ("teacher", "Default Teacher", DEFAULT_TEACHER_EMAIL, None, "", hash_password(DEFAULT_TEACHER_PASSWORD), ts),
-    )
-    print(f"[seed] Created teacher account  -> {DEFAULT_TEACHER_EMAIL} / {DEFAULT_TEACHER_PASSWORD}")
-    conn.commit()
-    print("[seed] Please change this password after the first login.")
+def new_teacher_code():
+    """A short code that is easy to read out: letters and digits without 0/O/1/I, e.g. DV-7K3M-P9XQ."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    pick = lambda n: "".join(secrets.choice(alphabet) for _ in range(n))
+    return f"DV-{pick(4)}-{pick(4)}"
+
+
+def normalize_code(code):
+    return re.sub(r"[\s-]", "", str(code or "")).upper()
 
 
 # --------------------------------------------------------------------------- #
@@ -205,8 +207,9 @@ def seed(conn):
 # --------------------------------------------------------------------------- #
 SETTING_DEFAULTS = {
     "student_signup": "1" if ALLOW_STUDENT_SIGNUP else "0",
-    "teacher_signup": os.environ.get("DOCWALL_TEACHER_SIGNUP", "1"),   # teachers may request access with their email
+    "teacher_signup": os.environ.get("DOCWALL_TEACHER_SIGNUP", "1"),   # teachers may sign up with the access code
     "allowed_email_domains": ALLOWED_EMAIL_DOMAINS,
+    "teacher_code": "",
 }
 
 
@@ -226,7 +229,8 @@ def allowed_domains(conn):
 def settings_payload(conn):
     return {"student_signup": get_setting(conn, "student_signup") == "1",
             "teacher_signup": get_setting(conn, "teacher_signup") == "1",
-            "allowed_email_domains": allowed_domains(conn)}
+            "allowed_email_domains": allowed_domains(conn),
+            "teacher_code": get_setting(conn, "teacher_code")}
 
 
 # --------------------------------------------------------------------------- #
@@ -316,6 +320,7 @@ def api_config(ctx):
     conn = ctx["conn"]
     return {"college_name": COLLEGE_NAME, "allow_student_signup": get_setting(conn, "student_signup") == "1",
             "allow_teacher_signup": get_setting(conn, "teacher_signup") == "1",
+            "teacher_code_required": bool(get_setting(conn, "teacher_code")),
             "allowed_email_domains": allowed_domains(conn), "portal": ctx["handler"].portal}
 
 
@@ -357,9 +362,9 @@ def roll_taken(conn, roll_no, exclude_id=None):
 
 
 def api_register(ctx):
-    """Someone requests an account: students give email, ID number and password, teachers email and
-    password. An existing teacher must approve it before they can sign in (students get their name
-    and class at approval)."""
+    """Sign-up. Students give email, ID number and password and wait for a teacher to approve them
+    (the teacher adds the name and class). Teachers give email, the teacher access code and a
+    password and are active immediately: nobody has to approve a teacher."""
     conn, body = ctx["conn"], ctx["body"]
     role = body.get("role") or "student"
     if role not in ROLES:
@@ -369,6 +374,10 @@ def api_register(ctx):
     if get_setting(conn, f"{role}_signup") != "1":
         raise ApiError(403, "Sign-up is currently closed. Ask a teacher to create your account.")
     require(body, "email", "password")
+    if role == "teacher":
+        expected = normalize_code(get_setting(conn, "teacher_code"))
+        if expected and normalize_code(body.get("access_code")) != expected:
+            raise ApiError(403, "The teacher access code is wrong. Ask your department for the current code.")
     email = body["email"].strip().lower()
     validate_email(email)
     domains = allowed_domains(conn)
@@ -384,16 +393,18 @@ def api_register(ctx):
             raise ApiError(409, "That ID number is already registered. Sign in, or ask your teacher.")
     local = email.split("@", 1)[0]
     name = " ".join(part.capitalize() for part in re.split(r"[._\-+]+|\d+", local) if part) or local
+    status = "pending" if role == "student" else "active"
     try:
         conn.execute(
             "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at, status) VALUES (?,?,?,?,?,?,?,?)",
-            (role, name, email, roll_no, "", hash_password(body["password"]), now_iso(), "pending"),
+            (role, name, email, roll_no, "", hash_password(body["password"]), now_iso(), status),
         )
     except sqlite3.IntegrityError:
         raise ApiError(409, "An account with that email already exists.")
     conn.commit()
-    who = "Your teacher" if role == "student" else "An existing teacher"
-    return {"pending": True, "message": f"Request sent. {who} will approve it, then you can sign in."}
+    if role == "teacher":
+        return {"pending": False, "message": "Your teacher account is ready. Sign in with your email and password."}
+    return {"pending": True, "message": "Request sent. Your teacher will approve it, then you can sign in."}
 
 
 def api_logout(ctx):
@@ -617,7 +628,6 @@ def api_teacher_overview(ctx):
         "students": q("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'active'"),
         "pending_students": q("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'pending'"),
         "teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'active'"),
-        "pending_teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'pending'"),
         "submissions": q("SELECT COUNT(*) FROM submissions"),
         "ungraded": q("SELECT COUNT(*) FROM submissions WHERE graded_at IS NULL"),
     }
@@ -851,24 +861,22 @@ def api_teacher_approve_user(ctx):
     u = conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
     if u is None:
         raise ApiError(404, "User not found.")
-    if u["role"] == "student":
-        require(body, "name", "roll_no", "group_name")
-        roll_no = body["roll_no"].strip().upper()
-        if roll_taken(conn, roll_no, exclude_id=uid):
-            raise ApiError(409, "Another student already has that roll number.")
-        conn.execute("UPDATE users SET name=?, roll_no=?, group_name=?, status='active' WHERE id=?",
-                     (body["name"].strip(), roll_no, body["group_name"].strip().upper(), uid))
-    else:
-        require(body, "name")
-        conn.execute("UPDATE users SET name=?, status='active' WHERE id=?", (body["name"].strip(), uid))
+    if u["role"] != "student":
+        raise ApiError(400, "Only student requests need approval.")
+    require(body, "name", "roll_no", "group_name")
+    roll_no = body["roll_no"].strip().upper()
+    if roll_taken(conn, roll_no, exclude_id=uid):
+        raise ApiError(409, "Another student already has that roll number.")
+    conn.execute("UPDATE users SET name=?, roll_no=?, group_name=?, status='active' WHERE id=?",
+                 (body["name"].strip(), roll_no, body["group_name"].strip().upper(), uid))
     conn.commit()
     return {"user": public_user(conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone())}
 
 
 def api_teacher_requests(ctx):
-    """Pending account requests (students and teachers). Polled by the teacher portal for live invites."""
+    """Pending student account requests. Polled by the teacher portal for live invites."""
     pending = rows(ctx["conn"].execute(
-        "SELECT id, role, name, email, roll_no, created_at FROM users WHERE status = 'pending' ORDER BY created_at DESC"))
+        "SELECT id, role, name, email, roll_no, created_at FROM users WHERE status = 'pending' AND role = 'student' ORDER BY created_at DESC"))
     return {"requests": pending, "server_time": now_iso()}
 
 
@@ -882,6 +890,11 @@ def api_teacher_update_settings(ctx):
         set_setting(conn, "student_signup", "1" if body["student_signup"] else "0")
     if "teacher_signup" in body:
         set_setting(conn, "teacher_signup", "1" if body["teacher_signup"] else "0")
+    if "teacher_code" in body:
+        code = str(body["teacher_code"] or "").strip()
+        if code and len(normalize_code(code)) < 4:
+            raise ApiError(400, "The teacher access code must be at least 4 letters or digits.")
+        set_setting(conn, "teacher_code", code)
     if "allowed_email_domains" in body:
         raw = body["allowed_email_domains"]
         items = raw if isinstance(raw, list) else str(raw).split(",")
@@ -1227,6 +1240,16 @@ class PortalServer(ThreadingHTTPServer):
 
 def main():
     init_db()
+    conn = db()
+    teacher_code = get_setting(conn, "teacher_code")
+    teacher_count = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'teacher'").fetchone()[0]
+    conn.close()
+    if teacher_code:
+        print(f"Teacher access code : {teacher_code}   (teachers sign up with it on the teacher portal; change it in Settings)")
+    else:
+        print("Teacher access code : none - anyone can sign up as a teacher! Set one in Settings.")
+    if teacher_count == 0:
+        print("No teacher account yet: open the teacher portal, choose 'Create a teacher account' and use the code above.")
     shown_host = "localhost" if HOST in ("0.0.0.0", "::", "") else HOST
     try:
         if STUDENT_PORT == TEACHER_PORT:

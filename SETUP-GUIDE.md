@@ -53,9 +53,10 @@ The server prints two addresses:
     Student portal : http://localhost:8080
     Teacher portal : http://localhost:8081
 
-Open the teacher one, sign in with the default teacher account printed in the terminal (also
-listed in README.md), change its password under **Profile**, and look around. The portal starts
-empty: create an assignment, then open **Student view** to see it the way a student would.
+The terminal also prints a **teacher access code** (something like `DV-7K3M-P9XQ`). Open the
+teacher portal, choose **Create a teacher account**, enter your email, that code and a password,
+and you are in. The portal starts empty: create an assignment, then open **Student view** to see
+it the way a student would.
 
 Stop the server with Ctrl+C.
 
@@ -75,8 +76,8 @@ portals. Then:
 
        sudo mkdir -p /var/lib/docwall && sudo chown www-data:www-data /var/lib/docwall
 
-3. Open `/opt/docwall/deploy/docwall.service` and change the two `DOCWALL_ADMIN_*` lines to the
-   HOD's or your email and a strong password. Then install and start it:
+3. Optionally open `/opt/docwall/deploy/docwall.service` and set `DOCWALL_TEACHER_CODE` to a
+   code of your choice (leave it out to get a random one). Then install and start it:
 
        sudo cp /opt/docwall/deploy/docwall.service /etc/systemd/system/
        sudo systemctl daemon-reload
@@ -94,8 +95,10 @@ portals. Then:
 
    For HTTPS run `sudo certbot --nginx` and set `DOCWALL_SECURE_COOKIE=1` in the service file.
 
-5. First login: open the teacher address, sign in with the admin account, change the password,
-   set the accepted email domain under **Settings**, and share the student address with students.
+5. First login: read the teacher access code with `sudo journalctl -u docwall | grep "access code"`,
+   open the teacher address, choose **Create a teacher account** and use that code. Then set the
+   accepted email domain under **Settings**, share the code with the other teachers, and share
+   the student address with students.
 
 Updating later, after either of us pushes a change:
 
@@ -112,9 +115,10 @@ folder you own. Windows server? Install Python and run `py server.py`.
   their student ID / roll number and a password. A teacher approves the request (checking the
   ID and adding the name and class). Until then the
   student cannot sign in.
-* **Teachers**: open the teacher portal → **Request teacher access** → enter a Gmail address and a
-  password. An existing teacher approves it under **Teachers**.
-* While a teacher is signed in, new requests pop up as an invite card with an **Approve** button.
-* Teachers can close sign-ups or change the accepted email domain under **Settings**.
+* **Teachers**: open the teacher portal → **Create a teacher account** → enter a Gmail address,
+  the teacher access code and a password. The account works immediately; nobody approves it.
+* While a teacher is signed in, new student requests pop up as an invite card with an **Approve** button.
+* Teachers can see or change the access code, close sign-ups or change the accepted email
+  domain under **Settings**.
 
 Full details, every setting and the API are in `README.md` in the repository.

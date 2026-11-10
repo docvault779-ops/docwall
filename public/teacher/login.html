@@ -29,7 +29,7 @@
       <div class="auth-card">
         <section id="login-view">
           <h1>Teacher sign in</h1>
-          <p class="sub">Teacher accounts are created by the department. Student credentials will not work here.</p>
+          <p class="sub">Sign in with the email and password you chose. Student credentials will not work here.</p>
           <form id="login-form" novalidate>
             <div class="form-error" id="login-error" hidden></div>
             <div class="field"><label for="l-id">Email</label><input id="l-id" name="identifier" type="email" autocomplete="username" required autofocus></div>
@@ -37,20 +37,21 @@
             <button class="btn btn-primary btn-lg btn-block" type="submit" style="background:#7c3aed;border-color:#7c3aed;box-shadow:0 4px 10px rgba(124,58,237,.25)">Sign in</button>
           </form>
           <div class="callout ok" id="signup-done" hidden style="margin-top:16px"></div>
-          <p class="auth-switch" id="signup-link" hidden>New teacher? <button class="link-btn" id="show-signup" style="color:#7c3aed">Request teacher access</button></p>
-          <p class="auth-switch" id="no-signup" hidden>Need an account? Ask an existing teacher to add you from <em>Teachers</em>.</p>
+          <p class="auth-switch" id="signup-link" hidden>New teacher? <button class="link-btn" id="show-signup" style="color:#7c3aed">Create a teacher account</button></p>
+          <p class="auth-switch" id="no-signup" hidden>Teacher sign-up is closed. Ask a colleague to add you from <em>Teachers</em>.</p>
         </section>
         <section id="signup-view" hidden>
-          <h1>Request teacher access</h1>
-          <p class="sub">Use your personal Gmail and choose a password. An existing teacher approves the request, then you can sign in.</p>
+          <h1>Create a teacher account</h1>
+          <p class="sub">Enter your email, the teacher access code from your department and a password. Your account is ready immediately; nobody has to approve it.</p>
           <form id="signup-form" novalidate>
             <div class="form-error" id="signup-error" hidden></div>
             <div class="field"><label for="s-email">Email</label><input id="s-email" name="email" type="email" autocomplete="email" placeholder="yourname@gmail.com" required><span class="hint" id="domain-hint">Use your personal Gmail address.</span></div>
+            <div class="field" id="code-field"><label for="s-code">Teacher access code</label><input id="s-code" name="access_code" type="password" autocomplete="off" required placeholder="DV-XXXX-XXXX"><span class="hint">Printed when the server starts and shown to every teacher under Settings. Ask your department or a colleague.</span></div>
             <div class="field"><label for="s-pw">Password</label><input id="s-pw" name="password" type="password" minlength="6" autocomplete="new-password" required><span class="hint">At least 6 characters</span></div>
             <div class="field"><label for="s-pw2">Re-enter password</label><input id="s-pw2" name="password_confirm" type="password" minlength="6" autocomplete="new-password" required></div>
-            <button class="btn btn-primary btn-lg btn-block" type="submit" style="background:#7c3aed;border-color:#7c3aed">Send request</button>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" style="background:#7c3aed;border-color:#7c3aed">Create account</button>
           </form>
-          <p class="auth-switch">Already approved? <button class="link-btn" id="show-login" style="color:#7c3aed">Sign in</button></p>
+          <p class="auth-switch">Already have an account? <button class="link-btn" id="show-login" style="color:#7c3aed">Sign in</button></p>
         </section>
       </div>
     </main>

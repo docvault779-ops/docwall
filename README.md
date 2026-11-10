@@ -48,13 +48,15 @@ This starts both portals:
 * Student portal: <http://localhost:8080>
 * Teacher portal: <http://localhost:8081>
 
-On the very first run DocVault creates `data/docwall.db` and prints the first teacher account:
+On the very first run DocVault creates `data/docwall.db` and a **teacher access code**, which is
+printed at every start:
 
-| Role | Email | Password | Notes |
-|------|-------|----------|-------|
-| Teacher | `teacher@college.edu` | `Teacher@123` | Change this immediately (Profile → Change password). |
+    Teacher access code : DV-7K3M-P9XQ   (teachers sign up with it on the teacher portal; change it in Settings)
 
-No students or assignments are created: students join by request and teachers create the assignments.
+There are no accounts to begin with. The first teacher opens the teacher portal, chooses
+**Create a teacher account** and enters their email, that code and a password. Every teacher
+after that does the same, so nobody has to approve a teacher. Students join by request and
+teachers create the assignments.
 
 ---
 
@@ -87,14 +89,17 @@ Students page.
 
 ## How teachers join
 
-Only the first teacher account is created by the server (see *Default accounts*). Every other
-teacher either gets an account from a colleague (**Teachers → Add teacher**) or requests one:
+Teachers never wait for anyone. The department shares one **teacher access code**:
 
-1. On the teacher portal they choose **Request teacher access** and enter their **personal
-   Gmail** (or another accepted domain) and a password (typed twice).
-2. The request shows up under **Teachers → Teacher access requests** and as a live invite for any
-   signed-in teacher. Approve only colleagues you know: an approved teacher has full control.
-3. Teacher requests can be switched off in **Settings** once the staff has joined.
+1. On the teacher portal they choose **Create a teacher account** and enter their email (from an
+   accepted domain), the access code and a password (typed twice).
+2. The account is active immediately: they sign in and have full control.
+3. The code is printed when the server starts and shown to every signed-in teacher under
+   **Settings**, where it can be changed (old codes stop working at once). Teacher sign-up can
+   also be switched off there once the staff has joined, and colleagues can always be added
+   directly under **Teachers → Add teacher**.
+
+If the code leaks, change it in Settings and delete any unknown teacher under **Teachers**.
 
 ---
 
@@ -109,12 +114,11 @@ teacher either gets an account from a colleague (**Teachers → Add teacher**) o
 | `DOCWALL_MAX_UPLOAD_MB` | `25` | Max size of a single uploaded file. |
 | `DOCWALL_SESSION_DAYS` | `7` | How long a login lasts. |
 | `DOCWALL_STUDENT_SIGNUP` | `1` | Initial value of the "students may request an account" switch. Teachers change it later in **Settings**. |
-| `DOCWALL_TEACHER_SIGNUP` | `1` | Initial value of the "teachers may request access" switch. Teachers change it later in **Settings**. |
+| `DOCWALL_TEACHER_SIGNUP` | `1` | Initial value of the "teachers may sign up with the access code" switch. Teachers change it later in **Settings**. |
+| `DOCWALL_TEACHER_CODE` | *(random)* | Initial teacher access code (first run only). Leave unset to get a random one, printed at every start. Teachers change it later in **Settings**. |
 | `DOCWALL_ALLOWED_EMAIL_DOMAINS` | `gmail.com` | Initial list of email domains accepted for student requests (comma separated, empty = any). Teachers change it later in **Settings**. |
 | `DOCWALL_SECURE_COOKIE` | `0` | Set to `1` when the site is served over HTTPS. |
 | `DOCWALL_COLLEGE_NAME` | `DocVault College Portal` | Shown in the browser tab on the landing page. |
-| `DOCWALL_ADMIN_EMAIL` | `teacher@college.edu` | First teacher account (first run only). |
-| `DOCWALL_ADMIN_PASSWORD` | `Teacher@123` | Its password (first run only). |
 
 ---
 
@@ -151,8 +155,9 @@ teacher either gets an account from a colleague (**Teachers → Add teacher**) o
    Give students only the student address. The teacher address can stay internal to the
    department (or be limited to the campus network with an Nginx `allow`/`deny` block).
 
-5. **First login**: open the **teacher** address, sign in with the admin account,
-   change the password and add the other teachers under **Teachers**.
+5. **First login**: read the teacher access code from `journalctl -u docwall`, open the
+   **teacher** address, choose **Create a teacher account** and use the code. Share the code
+   with the other teachers (or add them under **Teachers**).
 
 ### Without root access / on Windows
 
@@ -195,10 +200,10 @@ All endpoints return JSON; the session is an HttpOnly cookie.
 | Method & path | Role | Purpose |
 |---------------|------|---------|
 | `POST /api/auth/login` | – | `{role, identifier, password}`; role must match the account; `teacher` is refused on the student portal |
-| `POST /api/auth/register` | – | `{role, email, password}` account request (student, or teacher on the teacher portal); created as *pending* until a teacher approves |
+| `POST /api/auth/register` | – | `{role, email, password, roll_no?, access_code?}`; a student request is created as *pending* until a teacher approves; a teacher (teacher portal only) must give the access code and is active at once |
 | `POST /api/auth/logout`, `GET /api/me`, `POST /api/me/password` | any | session + password |
 | `POST /api/preview` `{student_id}`, `DELETE /api/preview` | teacher | start / stop viewing the student portal as that student (student routes then run read-only as them) |
-| `PUT /api/teacher/users/{id}/approve` `{name, roll_no, group_name}` | teacher | approve a pending request (students need roll_no and group_name; `DELETE /api/teacher/users/{id}` rejects) |
+| `PUT /api/teacher/users/{id}/approve` `{name, roll_no, group_name}` | teacher | approve a pending student request (`DELETE /api/teacher/users/{id}` rejects) |
 | `GET /api/teacher/requests` | teacher | pending requests, polled by the portal for live invites |
 | `GET/PUT /api/teacher/settings` | teacher | `{student_signup, teacher_signup, allowed_email_domains}` |
 | `GET /api/student/assignments[/{id}]` | student | published assignments for the student's class |

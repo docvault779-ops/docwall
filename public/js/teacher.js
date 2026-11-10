@@ -6,7 +6,7 @@
   if (!user) return;
 
   const view = document.getElementById('view');
-  const state = { assignments: null, q: '', pending: 0, pendingTeachers: 0, seenRequests: null };
+  const state = { assignments: null, q: '', pending: 0, seenRequests: null };
 
   /* ---- shell ---- */
   document.getElementById('sb-name').textContent = user.name;
@@ -30,7 +30,7 @@
   }
   function paintNav(active) {
     const list = state.assignments || [];
-    const counts = { assignments: list.length, grading: list.reduce((s, a) => s + a.ungraded_count, 0), students: state.pending || null, teachers: state.pendingTeachers || null };
+    const counts = { assignments: list.length, grading: list.reduce((s, a) => s + a.ungraded_count, 0), students: state.pending || null };
     for (const [key, [label, ic]] of Object.entries(NAV)) {
       const el = document.querySelector(`[data-nav="${key}"]`);
       el.innerHTML = `${icon(ic)}<span>${label}</span>${counts[key] != null ? `<span class="count">${counts[key]}</span>` : ''}`;
@@ -39,7 +39,7 @@
   }
   async function loadAssignments() {
     ({ assignments: state.assignments } = await api('GET', '/api/teacher/assignments'));
-    try { const st = (await api('GET', '/api/teacher/overview')).stats; state.pending = st.pending_students; state.pendingTeachers = st.pending_teachers; } catch (_) {}
+    try { const st = (await api('GET', '/api/teacher/overview')).stats; state.pending = st.pending_students; } catch (_) {}
   }
 
   /* ---- live invites: while a teacher is signed in, new account requests pop up to be approved ---- */
@@ -49,8 +49,7 @@
   async function pollRequests() {
     let requests;
     try { ({ requests } = await api('GET', '/api/teacher/requests')); } catch (_) { return; }
-    state.pending = requests.filter((r) => r.role === 'student').length;
-    state.pendingTeachers = requests.filter((r) => r.role === 'teacher').length;
+    state.pending = requests.length;
     if (state.seenRequests === null) {            // first poll: remember what already existed, no popups
       state.seenRequests = new Set(requests.map((r) => r.id));
     } else {
@@ -65,8 +64,8 @@
   function showInvite(r) {
     const el = document.createElement('div');
     el.className = 'invite'; el.dataset.req = r.id;
-    el.innerHTML = `<div class="ico">${icon(r.role === 'student' ? 'grad' : 'users')}</div>
-      <div class="min0"><div class="t">New ${r.role} wants to join</div><div class="e">${esc(r.email)}${r.roll_no ? ` · ID ${esc(r.roll_no)}` : ''}</div>
+    el.innerHTML = `<div class="ico">${icon('grad')}</div>
+      <div class="min0"><div class="t">New student wants to join</div><div class="e">${esc(r.email)}${r.roll_no ? ` · ID ${esc(r.roll_no)}` : ''}</div>
         <div class="row"><button class="btn btn-sm btn-primary" data-ok>${icon('check')} Approve</button><button class="btn btn-sm" data-later>Later</button></div></div>
       <button class="icon-btn" data-later title="Dismiss">${icon('x')}</button>`;
     el.querySelectorAll('[data-later]').forEach((b) => b.onclick = () => el.remove());
@@ -339,9 +338,9 @@
     view.innerHTML = `
       <div class="page-head"><div><h1>${icon(isStudent ? 'grad' : 'users')} ${isStudent ? 'Students' : 'Teachers'}</h1><p class="sub">${isStudent ? `${users.length} student account${users.length === 1 ? '' : 's'} across ${groups.length} class${groups.length === 1 ? '' : 'es'}.` : `${users.length} teacher account${users.length === 1 ? '' : 's'} with full access.`}</p></div>
         <button class="btn btn-primary" id="add-user">${icon('plus')} Add ${role}</button></div>
-      ${pending.length ? `<div class="card" style="margin-bottom:18px;border-color:#fcd34d">
-        <div class="card-pad" style="padding-bottom:6px"><h3 style="font-size:15px;display:flex;align-items:center;gap:8px">${icon('alert')} ${isStudent ? 'Account' : 'Teacher access'} requests <span class="badge pending">${pending.length}</span></h3>
-        <p class="hint">${isStudent ? 'Students who signed up and are waiting to join. Approve to add their roll number and class, or reject to remove the request.' : 'People who asked for teacher access with their email. Approve only colleagues you know; approved teachers get full control.'}</p></div>
+      ${isStudent && pending.length ? `<div class="card" style="margin-bottom:18px;border-color:#fcd34d">
+        <div class="card-pad" style="padding-bottom:6px"><h3 style="font-size:15px;display:flex;align-items:center;gap:8px">${icon('alert')} Account requests <span class="badge pending">${pending.length}</span></h3>
+        <p class="hint">Students who signed up and are waiting to join. Check the ID, add the name and class, or reject to remove the request.</p></div>
         <div class="table-wrap"><table><thead><tr><th>Email</th><th>Requested</th><th></th></tr></thead><tbody>
           ${pending.map((u) => `<tr><td><span class="strong">${esc(u.email)}</span>${u.roll_no ? `<div class="dim">ID ${esc(u.roll_no)}</div>` : ''}</td><td class="dim">${fmtDate(u.created_at)}</td>
             <td class="actions"><button class="btn btn-sm btn-primary" data-approve="${u.id}">${icon('check')} Approve</button><button class="btn btn-sm" data-reject="${u.id}" style="color:var(--danger)">${icon('x')} Reject</button></td></tr>`).join('')}
@@ -350,7 +349,7 @@
       ${items.length ? `<div class="card table-wrap"><table><thead><tr>${isStudent ? '<th>Roll no</th>' : ''}<th>Name</th>${isStudent ? '<th>Class</th>' : ''}<th>Email</th>${isStudent ? '<th>Submissions</th>' : '<th>Added</th>'}<th></th></tr></thead><tbody>
         ${items.map((u) => `<tr>${isStudent ? `<td class="strong">${esc(u.roll_no || '—')}</td>` : ''}<td><span class="strong">${esc(u.name)}</span>${u.id === user.id ? ' <span class="badge plain all">You</span>' : ''}</td>${isStudent ? `<td>${groupLabel(u.group_name)}</td>` : ''}<td class="dim">${esc(u.email)}</td><td>${isStudent ? u.submission_count : fmtDate(u.created_at, false)}</td>
           <td class="actions">${isStudent ? `<button class="icon-btn" data-view="${u.id}" title="View student portal as ${esc(u.name)}">${icon('eye')}</button>` : ''}<button class="icon-btn" data-edit="${u.id}" title="Edit / reset password">${icon('edit')}</button>${u.id !== user.id ? `<button class="icon-btn" data-del="${u.id}" title="Delete" style="color:var(--danger)">${icon('trash')}</button>` : ''}</td></tr>`).join('')}
-      </tbody></table></div>` : emptyState('users', `No ${role}s found`, isStudent ? 'Students can sign up from the student login page, or add them here.' : 'Add a colleague with the button above.')}`;
+      </tbody></table></div>` : emptyState('users', `No ${role}s found`, isStudent ? 'Students can sign up from the student login page, or add them here.' : 'Colleagues sign up on the teacher login page with the access code (see Settings), or add them here.')}`;
     document.getElementById('add-user').onclick = () => openUserModal(role, null, groups, () => renderUsers(role));
     view.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => previewAs(+b.dataset.view));
     view.querySelectorAll('[data-approve]').forEach((b) => b.onclick = () => openApproveModal(users.find((u) => u.id === +b.dataset.approve), groups, () => renderUsers(role)));
@@ -369,18 +368,15 @@
   }
 
   function openApproveModal(u, groups, onDone) {
-    const isTeacher = u.role === 'teacher';
     const m = modal({
-      title: isTeacher ? 'Approve teacher access' : 'Approve student',
+      title: 'Approve student',
       body: `<form id="ap-form">
-        ${isTeacher
-          ? `<div class="callout warn" style="margin-bottom:14px">${icon('alert')}<div>Request from <strong>${esc(u.email)}</strong>. Approve only if you know this person: teachers can create, edit and grade everything and manage accounts.</div></div>`
-          : `<div class="callout info" style="margin-bottom:14px">${icon('user')}<div>Request from <strong>${esc(u.email)}</strong>${u.roll_no ? ` with ID <strong>${esc(u.roll_no)}</strong>` : ''}. Check the ID against the college list and fill in the rest; the student sees it on their profile.</div></div>`}
+        <div class="callout info" style="margin-bottom:14px">${icon('user')}<div>Request from <strong>${esc(u.email)}</strong>${u.roll_no ? ` with ID <strong>${esc(u.roll_no)}</strong>` : ''}. Check the ID against the college list and fill in the rest; the student sees it on their profile.</div></div>
         <div class="field"><label>Full name *</label><input name="name" required value="${esc(u.name || '')}"></div>
-        ${isTeacher ? '' : `<div class="grid-2">
+        <div class="grid-2">
           <div class="field"><label>Roll number / ID *</label><input name="roll_no" required placeholder="CS2301" value="${esc(u.roll_no || '')}"></div>
           <div class="field"><label>Class / section *</label><input name="group_name" required list="ap-groups" placeholder="CSE-3A"><datalist id="ap-groups">${groups.map((g) => `<option value="${esc(g)}">`).join('')}</datalist></div>
-        </div>`}
+        </div>
       </form>`,
       footer: `<button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="ap-save">${icon('check')} Approve and activate</button>`,
     });
@@ -389,7 +385,7 @@
       if (!form.reportValidity()) return;
       try {
         await api('PUT', `/api/teacher/users/${u.id}/approve`, Object.fromEntries(new FormData(form).entries()));
-        toast(`${isTeacher ? 'Teacher' : 'Student'} approved. They can sign in now.`, 'ok'); closeModal(); onDone();
+        toast('Student approved. They can sign in now.', 'ok'); closeModal(); onDone();
       } catch (e) { toast(e.message, 'bad'); }
     };
   }
@@ -399,14 +395,17 @@
     view.innerHTML = '<div class="loading">Loading…</div>';
     const { settings } = await api('GET', '/api/teacher/settings');
     view.innerHTML = `
-      <div class="page-head"><div><h1>${icon('settings')} Settings</h1><p class="sub">Who can join the student portal. Changes apply immediately for everyone.</p></div></div>
+      <div class="page-head"><div><h1>${icon('settings')} Settings</h1><p class="sub">Who can join, and the teacher access code. Changes apply immediately for everyone.</p></div></div>
       <div class="detail">
         <form class="card card-pad" id="st-form">
           <h3 style="font-size:15px;margin-bottom:12px">Who can request an account</h3>
           <label class="check" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px"><input type="checkbox" name="student_signup" ${settings.student_signup ? 'checked' : ''} style="margin-top:3px">
-            <span><strong>Allow students to request an account</strong><br><span class="hint">Students enter an email and password. Nobody can sign in until a teacher approves the request on the Students page. Turn this off once everyone has joined.</span></span></label>
+            <span><strong>Allow students to request an account</strong><br><span class="hint">Students enter an email, their student ID and a password. Nobody can sign in until a teacher approves the request on the Students page. Turn this off once everyone has joined.</span></span></label>
           <label class="check" style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px"><input type="checkbox" name="teacher_signup" ${settings.teacher_signup ? 'checked' : ''} style="margin-top:3px">
-            <span><strong>Allow teachers to request access</strong><br><span class="hint">Colleagues enter their personal email and a password on the teacher portal. An existing teacher must approve them under Teachers before they can sign in.</span></span></label>
+            <span><strong>Allow teachers to sign up with the access code</strong><br><span class="hint">Colleagues create their own account on the teacher login page with their email, the code below and a password. No approval is needed.</span></span></label>
+          <div class="field"><label for="st-code">Teacher access code</label>
+            <div style="display:flex;gap:8px"><input id="st-code" name="teacher_code" value="${esc(settings.teacher_code)}" placeholder="DV-XXXX-XXXX" style="flex:1;font-family:ui-monospace,Menlo,monospace;letter-spacing:.5px"><button class="btn" type="button" id="st-copy" title="Copy code">${icon('copy')} Copy</button></div>
+            <span class="hint">Give this code only to teachers. Change it any time (old codes stop working at once). Leaving it empty lets <strong>anyone</strong> sign up as a teacher, so keep one set.</span></div>
           <div class="field"><label for="st-domains">Accepted email domains</label><input id="st-domains" name="allowed_email_domains" value="${esc(settings.allowed_email_domains.join(', '))}" placeholder="gmail.com"><span class="hint">Comma separated, e.g. <code>gmail.com, college.edu</code>. Leave empty to accept any email address.</span></div>
           <button class="btn btn-primary" type="submit">${icon('check')} Save settings</button>
         </form>
@@ -414,20 +413,23 @@
           <h3 style="font-size:15px;margin-bottom:10px">How joining works</h3>
           <ol style="font-size:13.5px;padding-left:18px;line-height:1.6;color:var(--text-secondary);display:grid;gap:6px">
             <li>The student opens the student portal and chooses <em>Request a student account</em>.</li>
-            <li>They enter an email from an accepted domain and choose a password. That is all they fill in.</li>
-            <li>The request appears under <a href="#/students">Students</a>. You approve it, adding the roll number and class, or reject it.</li>
-            <li>Once approved, the student signs in with that email and password.</li>
+            <li>They enter an email from an accepted domain, their student ID and a password.</li>
+            <li>The request appears under <a href="#/students">Students</a>. You check the ID, add the name and class, or reject it.</li>
+            <li>Once approved, the student signs in with that email or ID and password.</li>
           </ol>
+          <h3 style="font-size:15px;margin:16px 0 10px">Teachers</h3>
+          <p style="font-size:13.5px;line-height:1.6;color:var(--text-secondary)">A teacher opens the teacher portal, chooses <em>Create a teacher account</em> and enters their email, the access code above and a password. The account works immediately. You can also add a colleague directly under <a href="#/teachers">Teachers</a>.</p>
         </div>
       </div>`;
     document.getElementById('st-form').onsubmit = async (e) => {
       e.preventDefault();
       const fd = new FormData(e.target);
       try {
-        await api('PUT', '/api/teacher/settings', { student_signup: fd.get('student_signup') === 'on', teacher_signup: fd.get('teacher_signup') === 'on', allowed_email_domains: fd.get('allowed_email_domains') });
+        await api('PUT', '/api/teacher/settings', { student_signup: fd.get('student_signup') === 'on', teacher_signup: fd.get('teacher_signup') === 'on', allowed_email_domains: fd.get('allowed_email_domains'), teacher_code: fd.get('teacher_code') });
         toast('Settings saved', 'ok');
       } catch (ex) { toast(ex.message, 'bad'); }
     };
+    document.getElementById('st-copy').onclick = () => UI.copyText(document.getElementById('st-code').value).then(() => toast('Code copied', 'ok')).catch(() => toast('Could not copy', 'bad'));
   }
 
   function openUserModal(role, u, groups, onDone) {

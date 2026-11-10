@@ -15,6 +15,8 @@ window.Auth = {
         $('#no-signup').hidden = allowed;
         // The teacher login is only mentioned on the combined portal, never on the student-only one.
         const t = $('#teacher-link'); if (t) t.hidden = c.portal !== 'both';
+        // Teachers sign up with the access code; the field disappears when no code is set.
+        const code = $('#code-field'); if (code) { code.hidden = !c.teacher_code_required; $('#s-code').required = !!c.teacher_code_required; }
         const d = c.allowed_email_domains || [];
         if (d.length) {
           $('#domain-hint').textContent = `Use your ${d.map((x) => '@' + x).join(' or ')} address.`;
@@ -32,7 +34,7 @@ window.Auth = {
           if (body.password !== body.password_confirm) throw new Error('The two passwords do not match. Please type them again.');
           delete body.password_confirm;
           const res = await UI.api('POST', '/api/auth/register', { role, ...body });
-          // Request recorded; the student can sign in once a teacher approves it.
+          // Students: request recorded, they sign in once a teacher approves it. Teachers: account ready now.
           $('#signup-view').hidden = true; $('#login-view').hidden = false;
           const done = $('#signup-done');
           done.innerHTML = `${UI.icon('checkCircle')}<div>${UI.esc(res.message || 'Request sent. A teacher will approve your account; after that you can sign in here.')}</div>`;
