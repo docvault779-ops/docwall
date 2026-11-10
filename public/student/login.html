@@ -42,11 +42,13 @@
         </section>
         <section id="signup-view" hidden>
           <h1>Request a student account</h1>
-          <p class="sub">Enter your email and choose a password. A teacher will approve your request, then you can sign in.</p>
+          <p class="sub">Enter your email, your student ID and a password. A teacher will approve your request, then you can sign in.</p>
           <form id="signup-form" novalidate>
             <div class="form-error" id="signup-error" hidden></div>
             <div class="field"><label for="s-email">Email</label><input id="s-email" name="email" type="email" autocomplete="email" placeholder="yourname@gmail.com" required autofocus><span class="hint" id="domain-hint">Use the email address your college asked for.</span></div>
+            <div class="field"><label for="s-roll">Student ID / roll number</label><input id="s-roll" name="roll_no" required placeholder="e.g. CS2301" autocomplete="off"><span class="hint">The ID number the college gave you. Your teacher checks it before approving.</span></div>
             <div class="field"><label for="s-pw">Password</label><input id="s-pw" name="password" type="password" minlength="6" autocomplete="new-password" required><span class="hint">At least 6 characters</span></div>
+            <div class="field"><label for="s-pw2">Re-enter password</label><input id="s-pw2" name="password_confirm" type="password" minlength="6" autocomplete="new-password" required></div>
             <button class="btn btn-primary btn-lg btn-block" type="submit">Send request</button>
           </form>
           <p class="auth-switch">Already registered? <button class="link-btn" id="show-login">Sign in</button></p>

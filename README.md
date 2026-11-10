@@ -69,14 +69,14 @@ every student of that class, including the ones who have **not** submitted.
 
 Students never get in on their own. The flow is:
 
-1. On the student portal the student chooses **Request a student account** and enters only an
-   **email address and a password**. By default the email must be a `@gmail.com` address; the
+1. On the student portal the student chooses **Request a student account** and enters an
+   **email address, their student ID / roll number, and a password** (typed twice). By default the email must be a `@gmail.com` address; the
    teacher can change the accepted domains (for example to the college's own domain).
 2. The request shows up in the teacher portal under **Students → Account requests** (with a
    badge on the Students menu and a notice on the dashboard). Until a teacher acts, the student
    cannot sign in and sees "waiting for approval" if they try.
-3. The teacher clicks **Approve**, fills in the student's name, roll number and class/section,
-   and the account becomes active. **Reject** removes the request.
+3. The teacher clicks **Approve**, checks the ID number the student gave, fills in the name
+   and class/section, and the account becomes active. An ID that is already registered is refused. **Reject** removes the request.
 4. Teachers can also create accounts directly with **Add student**, or switch requests off
    entirely in **Settings** once everyone has joined.
 
@@ -91,7 +91,7 @@ Only the first teacher account is created by the server (see *Default accounts*)
 teacher either gets an account from a colleague (**Teachers → Add teacher**) or requests one:
 
 1. On the teacher portal they choose **Request teacher access** and enter their **personal
-   Gmail** (or another accepted domain) and a password.
+   Gmail** (or another accepted domain) and a password (typed twice).
 2. The request shows up under **Teachers → Teacher access requests** and as a live invite for any
    signed-in teacher. Approve only colleagues you know: an approved teacher has full control.
 3. Teacher requests can be switched off in **Settings** once the staff has joined.

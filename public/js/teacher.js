@@ -66,7 +66,7 @@
     const el = document.createElement('div');
     el.className = 'invite'; el.dataset.req = r.id;
     el.innerHTML = `<div class="ico">${icon(r.role === 'student' ? 'grad' : 'users')}</div>
-      <div class="min0"><div class="t">New ${r.role} wants to join</div><div class="e">${esc(r.email)}</div>
+      <div class="min0"><div class="t">New ${r.role} wants to join</div><div class="e">${esc(r.email)}${r.roll_no ? ` · ID ${esc(r.roll_no)}` : ''}</div>
         <div class="row"><button class="btn btn-sm btn-primary" data-ok>${icon('check')} Approve</button><button class="btn btn-sm" data-later>Later</button></div></div>
       <button class="icon-btn" data-later title="Dismiss">${icon('x')}</button>`;
     el.querySelectorAll('[data-later]').forEach((b) => b.onclick = () => el.remove());
@@ -343,7 +343,7 @@
         <div class="card-pad" style="padding-bottom:6px"><h3 style="font-size:15px;display:flex;align-items:center;gap:8px">${icon('alert')} ${isStudent ? 'Account' : 'Teacher access'} requests <span class="badge pending">${pending.length}</span></h3>
         <p class="hint">${isStudent ? 'Students who signed up and are waiting to join. Approve to add their roll number and class, or reject to remove the request.' : 'People who asked for teacher access with their email. Approve only colleagues you know; approved teachers get full control.'}</p></div>
         <div class="table-wrap"><table><thead><tr><th>Email</th><th>Requested</th><th></th></tr></thead><tbody>
-          ${pending.map((u) => `<tr><td><span class="strong">${esc(u.email)}</span></td><td class="dim">${fmtDate(u.created_at)}</td>
+          ${pending.map((u) => `<tr><td><span class="strong">${esc(u.email)}</span>${u.roll_no ? `<div class="dim">ID ${esc(u.roll_no)}</div>` : ''}</td><td class="dim">${fmtDate(u.created_at)}</td>
             <td class="actions"><button class="btn btn-sm btn-primary" data-approve="${u.id}">${icon('check')} Approve</button><button class="btn btn-sm" data-reject="${u.id}" style="color:var(--danger)">${icon('x')} Reject</button></td></tr>`).join('')}
         </tbody></table></div></div>` : ''}
       ${isStudent && groups.length ? `<div class="chips"><a class="chip ${!group ? 'active' : ''}" href="#/students">All<span class="n">${users.length}</span></a>${groups.map((g) => `<a class="chip ${g === group ? 'active' : ''}" href="#/students?group=${encodeURIComponent(g)}">${esc(g)}<span class="n">${users.filter((u) => u.group_name === g).length}</span></a>`).join('')}</div>` : ''}
@@ -375,10 +375,10 @@
       body: `<form id="ap-form">
         ${isTeacher
           ? `<div class="callout warn" style="margin-bottom:14px">${icon('alert')}<div>Request from <strong>${esc(u.email)}</strong>. Approve only if you know this person: teachers can create, edit and grade everything and manage accounts.</div></div>`
-          : `<div class="callout info" style="margin-bottom:14px">${icon('user')}<div>Request from <strong>${esc(u.email)}</strong>. Fill in what you know about this student; they will see it on their profile.</div></div>`}
+          : `<div class="callout info" style="margin-bottom:14px">${icon('user')}<div>Request from <strong>${esc(u.email)}</strong>${u.roll_no ? ` with ID <strong>${esc(u.roll_no)}</strong>` : ''}. Check the ID against the college list and fill in the rest; the student sees it on their profile.</div></div>`}
         <div class="field"><label>Full name *</label><input name="name" required value="${esc(u.name || '')}"></div>
         ${isTeacher ? '' : `<div class="grid-2">
-          <div class="field"><label>Roll number *</label><input name="roll_no" required placeholder="CS2301"></div>
+          <div class="field"><label>Roll number / ID *</label><input name="roll_no" required placeholder="CS2301" value="${esc(u.roll_no || '')}"></div>
           <div class="field"><label>Class / section *</label><input name="group_name" required list="ap-groups" placeholder="CSE-3A"><datalist id="ap-groups">${groups.map((g) => `<option value="${esc(g)}">`).join('')}</datalist></div>
         </div>`}
       </form>`,

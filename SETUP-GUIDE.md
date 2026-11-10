@@ -108,8 +108,9 @@ folder you own. Windows server? Install Python and run `py server.py`.
 
 ## How people join DocVault
 
-* **Students**: open the student portal → **Request a student account** → enter a Gmail address
-  and a password. A teacher approves the request (adding roll number and class). Until then the
+* **Students**: open the student portal → **Request a student account** → enter a Gmail address,
+  their student ID / roll number and a password. A teacher approves the request (checking the
+  ID and adding the name and class). Until then the
   student cannot sign in.
 * **Teachers**: open the teacher portal → **Request teacher access** → enter a Gmail address and a
   password. An existing teacher approves it under **Teachers**.

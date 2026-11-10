@@ -29,6 +29,8 @@ window.Auth = {
         const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
         try {
           const body = Object.fromEntries(new FormData(e.target).entries());
+          if (body.password !== body.password_confirm) throw new Error('The two passwords do not match. Please type them again.');
+          delete body.password_confirm;
           const res = await UI.api('POST', '/api/auth/register', { role, ...body });
           // Request recorded; the student can sign in once a teacher approves it.
           $('#signup-view').hidden = true; $('#login-view').hidden = false;
@@ -37,7 +39,7 @@ window.Auth = {
           // Say which account was requested, so a teacher knows the student portal is separate.
           done.hidden = false;
           e.target.reset(); btn.disabled = false;
-          $('#l-id').value = body.email;
+          $('#l-id').value = body.roll_no || body.email;
         } catch (ex) { err.textContent = ex.message; err.hidden = false; btn.disabled = false; }
       };
     }

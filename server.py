@@ -348,9 +348,18 @@ def api_login(ctx):
     return {"user": public_user(user)}
 
 
+def roll_taken(conn, roll_no, exclude_id=None):
+    """True when another student (active or pending) already uses this roll number / ID."""
+    if not roll_no:
+        return False
+    row = conn.execute("SELECT id FROM users WHERE role = 'student' AND roll_no = ? COLLATE NOCASE", (roll_no,)).fetchone()
+    return row is not None and row["id"] != exclude_id
+
+
 def api_register(ctx):
-    """Someone requests an account with just an email and a password. An existing teacher must
-    approve it before they can sign in (students get their roll number and class at approval)."""
+    """Someone requests an account: students give email, ID number and password, teachers email and
+    password. An existing teacher must approve it before they can sign in (students get their name
+    and class at approval)."""
     conn, body = ctx["conn"], ctx["body"]
     role = body.get("role") or "student"
     if role not in ROLES:
@@ -366,12 +375,19 @@ def api_register(ctx):
     if domains and email.rsplit("@", 1)[-1] not in domains:
         raise ApiError(400, "Please use your " + " or ".join(f"@{d}" for d in domains) + " address.")
     validate_password(body["password"])
+    roll_no = None
+    if role == "student":
+        roll_no = (body.get("roll_no") or "").strip().upper()[:50]
+        if not roll_no:
+            raise ApiError(400, "Enter your student ID / roll number.")
+        if roll_taken(conn, roll_no):
+            raise ApiError(409, "That ID number is already registered. Sign in, or ask your teacher.")
     local = email.split("@", 1)[0]
     name = " ".join(part.capitalize() for part in re.split(r"[._\-+]+|\d+", local) if part) or local
     try:
         conn.execute(
             "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at, status) VALUES (?,?,?,?,?,?,?,?)",
-            (role, name, email, None, "", hash_password(body["password"]), now_iso(), "pending"),
+            (role, name, email, roll_no, "", hash_password(body["password"]), now_iso(), "pending"),
         )
     except sqlite3.IntegrityError:
         raise ApiError(409, "An account with that email already exists.")
@@ -837,8 +853,11 @@ def api_teacher_approve_user(ctx):
         raise ApiError(404, "User not found.")
     if u["role"] == "student":
         require(body, "name", "roll_no", "group_name")
+        roll_no = body["roll_no"].strip().upper()
+        if roll_taken(conn, roll_no, exclude_id=uid):
+            raise ApiError(409, "Another student already has that roll number.")
         conn.execute("UPDATE users SET name=?, roll_no=?, group_name=?, status='active' WHERE id=?",
-                     (body["name"].strip(), body["roll_no"].strip().upper(), body["group_name"].strip().upper(), uid))
+                     (body["name"].strip(), roll_no, body["group_name"].strip().upper(), uid))
     else:
         require(body, "name")
         conn.execute("UPDATE users SET name=?, status='active' WHERE id=?", (body["name"].strip(), uid))
@@ -849,7 +868,7 @@ def api_teacher_approve_user(ctx):
 def api_teacher_requests(ctx):
     """Pending account requests (students and teachers). Polled by the teacher portal for live invites."""
     pending = rows(ctx["conn"].execute(
-        "SELECT id, role, name, email, created_at FROM users WHERE status = 'pending' ORDER BY created_at DESC"))
+        "SELECT id, role, name, email, roll_no, created_at FROM users WHERE status = 'pending' ORDER BY created_at DESC"))
     return {"requests": pending, "server_time": now_iso()}
 
 
@@ -896,6 +915,8 @@ def api_teacher_create_user(ctx):
     require(body, "name", "email", "password")
     if role == "student":
         require(body, "roll_no", "group_name")
+        if roll_taken(conn, (body.get("roll_no") or "").strip().upper()):
+            raise ApiError(409, "Another student already has that roll number.")
     validate_email(body["email"].strip())
     validate_password(body["password"])
     try:
