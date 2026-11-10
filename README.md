@@ -1,6 +1,6 @@
-# DocWall – College Assignment Portal
+# DocVault – College Assignment Portal
 
-DocWall is a small web app for colleges with **two separate portals** served by **one
+DocVault is a small web app for colleges with **two separate portals** served by **one
 server** that shares a single assignments database:
 
 | Portal | Default address | Who signs in there | What they can do |
@@ -48,7 +48,7 @@ This starts both portals:
 * Student portal: <http://localhost:8080>
 * Teacher portal: <http://localhost:8081>
 
-On the very first run DocWall creates `data/docwall.db` and prints the default accounts:
+On the very first run DocVault creates `data/docwall.db` and prints the default accounts:
 
 | Role | Email | Password | Notes |
 |------|-------|----------|-------|
@@ -96,7 +96,7 @@ Students never get in on their own. The flow is:
 | `DOCWALL_STUDENT_SIGNUP` | `1` | Initial value of the "students may request an account" switch. Teachers change it later in **Settings**. |
 | `DOCWALL_ALLOWED_EMAIL_DOMAINS` | `gmail.com` | Initial list of email domains accepted for student requests (comma separated, empty = any). Teachers change it later in **Settings**. |
 | `DOCWALL_SECURE_COOKIE` | `0` | Set to `1` when the site is served over HTTPS. |
-| `DOCWALL_COLLEGE_NAME` | `DocWall College Portal` | Shown in the browser tab on the landing page. |
+| `DOCWALL_COLLEGE_NAME` | `DocVault College Portal` | Shown in the browser tab on the landing page. |
 | `DOCWALL_ADMIN_EMAIL` | `teacher@college.edu` | First teacher account (first run only). |
 | `DOCWALL_ADMIN_PASSWORD` | `Teacher@123` | Its password (first run only). |
 | `DOCWALL_SEED_DEMO` | `1` | `0` skips the demo student + sample assignment (first run only). |

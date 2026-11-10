@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DocWall - assignment portal for colleges.
+DocVault - assignment portal for colleges.
 
 Two separate roles with separate logins:
   * student  - view published assignments, download attachments, submit work, see grades
@@ -49,7 +49,7 @@ SESSION_DAYS = int(os.environ.get("DOCWALL_SESSION_DAYS", "7"))
 ALLOW_STUDENT_SIGNUP = os.environ.get("DOCWALL_STUDENT_SIGNUP", "1") != "0"      # initial value; teachers can change it in Settings
 ALLOWED_EMAIL_DOMAINS = os.environ.get("DOCWALL_ALLOWED_EMAIL_DOMAINS", "gmail.com")  # initial value; comma separated, '' = any
 SECURE_COOKIE = os.environ.get("DOCWALL_SECURE_COOKIE", "0") == "1"
-COLLEGE_NAME = os.environ.get("DOCWALL_COLLEGE_NAME", "DocWall College Portal")
+COLLEGE_NAME = os.environ.get("DOCWALL_COLLEGE_NAME", "DocVault College Portal")
 
 DEFAULT_TEACHER_EMAIL = os.environ.get("DOCWALL_ADMIN_EMAIL", "teacher@college.edu")
 DEFAULT_TEACHER_PASSWORD = os.environ.get("DOCWALL_ADMIN_PASSWORD", "Teacher@123")
@@ -198,7 +198,7 @@ def seed(conn):
                allow_late, accept_submissions, created_by, created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
-                "Welcome to DocWall - sample assignment",
+                "Welcome to DocVault - sample assignment",
                 "Orientation",
                 "This is a sample assignment created on first run.\n\n"
                 "Teachers: edit or delete it from the Assignments page.\n"
@@ -991,8 +991,8 @@ PAGES = {
 }
 
 
-class DocWallHandler(BaseHTTPRequestHandler):
-    server_version = "DocWall/1.0"
+class DocVaultHandler(BaseHTTPRequestHandler):
+    server_version = "DocVault/1.0"
     protocol_version = "HTTP/1.1"
 
     @property
@@ -1160,7 +1160,7 @@ class DocWallHandler(BaseHTTPRequestHandler):
             self.redirect(f"/{portal}")
             return
         if portal == "student" and (path.startswith("/teacher") or path in ("/js/teacher.js", "/index.html")):
-            self._send(HTTPStatus.NOT_FOUND, b"<h1>404 - Not found</h1><p><a href='/'>Back to DocWall</a></p>", "text/html; charset=utf-8")
+            self._send(HTTPStatus.NOT_FOUND, b"<h1>404 - Not found</h1><p><a href='/'>Back to DocVault</a></p>", "text/html; charset=utf-8")
             return
         rel = PAGES.get(path)
         if rel is None:
@@ -1169,7 +1169,7 @@ class DocWallHandler(BaseHTTPRequestHandler):
                 rel = rel + ".html"
         full = os.path.normpath(os.path.join(PUBLIC_DIR, rel))
         if not full.startswith(PUBLIC_DIR + os.sep) or not os.path.isfile(full):
-            self._send(HTTPStatus.NOT_FOUND, b"<h1>404 - Not found</h1><p><a href='/'>Back to DocWall</a></p>", "text/html; charset=utf-8")
+            self._send(HTTPStatus.NOT_FOUND, b"<h1>404 - Not found</h1><p><a href='/'>Back to DocVault</a></p>", "text/html; charset=utf-8")
             return
         mime = mimetypes.guess_type(full)[0] or "application/octet-stream"
         if mime.startswith("text/") or mime in ("application/javascript", "application/json"):
@@ -1185,7 +1185,7 @@ class PortalServer(ThreadingHTTPServer):
 
     def __init__(self, addr, portal):
         self.portal = portal
-        super().__init__(addr, DocWallHandler)
+        super().__init__(addr, DocVaultHandler)
 
 
 def main():
@@ -1197,14 +1197,14 @@ def main():
         else:
             servers = [PortalServer((HOST, STUDENT_PORT), "student"), PortalServer((HOST, TEACHER_PORT), "teacher")]
     except OSError as e:
-        sys.exit(f"Could not open a port ({e}). Is another DocWall already running? "
+        sys.exit(f"Could not open a port ({e}). Is another DocVault already running? "
                  f"Change DOCWALL_STUDENT_PORT / DOCWALL_TEACHER_PORT if needed.")
     if STUDENT_PORT == TEACHER_PORT:
-        print(f"DocWall (combined portal) running on http://{shown_host}:{STUDENT_PORT}  (data dir: {DATA_DIR})")
+        print(f"DocVault (combined portal) running on http://{shown_host}:{STUDENT_PORT}  (data dir: {DATA_DIR})")
         print(f"  Student login : http://{shown_host}:{STUDENT_PORT}/student/login")
         print(f"  Teacher login : http://{shown_host}:{STUDENT_PORT}/teacher/login")
     else:
-        print(f"DocWall running (data dir: {DATA_DIR})")
+        print(f"DocVault running (data dir: {DATA_DIR})")
         print(f"  Student portal : http://{shown_host}:{STUDENT_PORT}   (students only; no teacher login here)")
         print(f"  Teacher portal : http://{shown_host}:{TEACHER_PORT}   (teacher login, student login, student preview)")
     threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in servers]

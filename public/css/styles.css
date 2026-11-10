@@ -1,4 +1,4 @@
-/* DocWall – design tokens adapted from the DocVault prototype */
+/* DocVault – design tokens from the original DocVault prototype */
 :root {
   --bg-main: #f8fafc; --surface: #ffffff; --surface-alt: #f1f5f9; --surface-subtle: #f8fafc;
   --border: #e2e8f0; --border-hover: #cbd5e1; --border-focus: #94a3b8;

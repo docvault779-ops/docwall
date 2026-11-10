@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DocWall · College Assignment Portal</title>
+  <title>DocVault · College Assignment Portal</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
       <div class="brand" style="justify-content:center">
         <div class="brand-mark" style="width:52px;height:52px;border-radius:14px"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg></div>
       </div>
-      <h1>Doc<span style="color:var(--primary)">Wall</span></h1>
+      <h1>Doc<span style="color:var(--primary)">Vault</span></h1>
       <p class="lead" id="college">Assignments, submissions and grades in one place. Choose how you want to sign in.</p>
       <div class="roles">
         <a class="card role-card" href="/student/login">
@@ -31,7 +31,7 @@
     </div>
   </main>
   <script>
-    fetch('/api/config').then(r => r.json()).then(c => { if (c.college_name) document.title = c.college_name + ' · DocWall'; }).catch(() => {});
+    fetch('/api/config').then(r => r.json()).then(c => { if (c.college_name) document.title = c.college_name + ' · DocVault'; }).catch(() => {});
     fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => { if (d && d.user) location.href = '/' + d.user.role; }).catch(() => {});
   </script>
 </body>
