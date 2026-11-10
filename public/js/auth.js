@@ -8,10 +8,11 @@ window.Auth = {
       else if (role === 'student' && user.role === 'teacher' && view_as) location.href = '/student';
     }).catch(() => {});
 
-    if (role === 'student') {
+    if ($('#signup-form')) {
       UI.api('GET', '/api/config').then((c) => {
-        $('#signup-link').hidden = !c.allow_student_signup;
-        $('#no-signup').hidden = c.allow_student_signup;
+        const allowed = role === 'student' ? c.allow_student_signup : c.allow_teacher_signup;
+        $('#signup-link').hidden = !allowed;
+        $('#no-signup').hidden = allowed;
         // The teacher login is only mentioned on the combined portal, never on the student-only one.
         const t = $('#teacher-link'); if (t) t.hidden = c.portal !== 'both';
         const d = c.allowed_email_domains || [];
@@ -28,11 +29,12 @@ window.Auth = {
         const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
         try {
           const body = Object.fromEntries(new FormData(e.target).entries());
-          const res = await UI.api('POST', '/api/auth/register', body);
+          const res = await UI.api('POST', '/api/auth/register', { role, ...body });
           // Request recorded; the student can sign in once a teacher approves it.
           $('#signup-view').hidden = true; $('#login-view').hidden = false;
           const done = $('#signup-done');
           done.innerHTML = `${UI.icon('checkCircle')}<div>${UI.esc(res.message || 'Request sent. A teacher will approve your account; after that you can sign in here.')}</div>`;
+          // Say which account was requested, so a teacher knows the student portal is separate.
           done.hidden = false;
           e.target.reset(); btn.disabled = false;
           $('#l-id').value = body.email;

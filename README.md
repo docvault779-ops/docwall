@@ -79,7 +79,23 @@ Students never get in on their own. The flow is:
 3. The teacher clicks **Approve**, fills in the student's name, roll number and class/section,
    and the account becomes active. **Reject** removes the request.
 4. Teachers can also create accounts directly with **Add student**, or switch requests off
-   entirely in **Settings → Student sign-up** once everyone has joined.
+   entirely in **Settings** once everyone has joined.
+
+**Live invites.** While a teacher is signed in, the teacher portal checks for new requests every
+few seconds. When a student (or a colleague) asks to join, a card pops up in the corner with
+**Approve** and **Later**, so the teacher can let them in on the spot without going to the
+Students page.
+
+## How teachers join
+
+Only the first teacher account is created by the server (see *Default accounts*). Every other
+teacher either gets an account from a colleague (**Teachers → Add teacher**) or requests one:
+
+1. On the teacher portal they choose **Request teacher access** and enter their **personal
+   Gmail** (or another accepted domain) and a password.
+2. The request shows up under **Teachers → Teacher access requests** and as a live invite for any
+   signed-in teacher. Approve only colleagues you know: an approved teacher has full control.
+3. Teacher requests can be switched off in **Settings** once the staff has joined.
 
 ---
 
@@ -94,6 +110,7 @@ Students never get in on their own. The flow is:
 | `DOCWALL_MAX_UPLOAD_MB` | `25` | Max size of a single uploaded file. |
 | `DOCWALL_SESSION_DAYS` | `7` | How long a login lasts. |
 | `DOCWALL_STUDENT_SIGNUP` | `1` | Initial value of the "students may request an account" switch. Teachers change it later in **Settings**. |
+| `DOCWALL_TEACHER_SIGNUP` | `1` | Initial value of the "teachers may request access" switch. Teachers change it later in **Settings**. |
 | `DOCWALL_ALLOWED_EMAIL_DOMAINS` | `gmail.com` | Initial list of email domains accepted for student requests (comma separated, empty = any). Teachers change it later in **Settings**. |
 | `DOCWALL_SECURE_COOKIE` | `0` | Set to `1` when the site is served over HTTPS. |
 | `DOCWALL_COLLEGE_NAME` | `DocVault College Portal` | Shown in the browser tab on the landing page. |
@@ -180,11 +197,12 @@ All endpoints return JSON; the session is an HttpOnly cookie.
 | Method & path | Role | Purpose |
 |---------------|------|---------|
 | `POST /api/auth/login` | – | `{role, identifier, password}`; role must match the account; `teacher` is refused on the student portal |
-| `POST /api/auth/register` | – | `{email, password}` student account request; created as *pending* until a teacher approves |
+| `POST /api/auth/register` | – | `{role, email, password}` account request (student, or teacher on the teacher portal); created as *pending* until a teacher approves |
 | `POST /api/auth/logout`, `GET /api/me`, `POST /api/me/password` | any | session + password |
 | `POST /api/preview` `{student_id}`, `DELETE /api/preview` | teacher | start / stop viewing the student portal as that student (student routes then run read-only as them) |
-| `PUT /api/teacher/users/{id}/approve` `{name, roll_no, group_name}` | teacher | approve a pending student request (`DELETE /api/teacher/users/{id}` rejects it) |
-| `GET/PUT /api/teacher/settings` | teacher | `{student_signup, allowed_email_domains}` |
+| `PUT /api/teacher/users/{id}/approve` `{name, roll_no, group_name}` | teacher | approve a pending request (students need roll_no and group_name; `DELETE /api/teacher/users/{id}` rejects) |
+| `GET /api/teacher/requests` | teacher | pending requests, polled by the portal for live invites |
+| `GET/PUT /api/teacher/settings` | teacher | `{student_signup, teacher_signup, allowed_email_domains}` |
 | `GET /api/student/assignments[/{id}]` | student | published assignments for the student's class |
 | `POST /api/student/assignments/{id}/submit` | student | `{text_answer, files:[{name,data(base64)}]}` |
 | `GET /api/files/{assignment|submission}/{id}` | any (checked) | download a file |

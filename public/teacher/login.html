@@ -36,7 +36,20 @@
             <div class="field"><label for="l-pw">Password</label><input id="l-pw" name="password" type="password" autocomplete="current-password" required></div>
             <button class="btn btn-primary btn-lg btn-block" type="submit" style="background:#7c3aed;border-color:#7c3aed;box-shadow:0 4px 10px rgba(124,58,237,.25)">Sign in</button>
           </form>
-          <p class="auth-switch">Need an account? Ask an existing teacher to add you from <em>Teachers</em>.</p>
+          <div class="callout ok" id="signup-done" hidden style="margin-top:16px"></div>
+          <p class="auth-switch" id="signup-link" hidden>New teacher? <button class="link-btn" id="show-signup" style="color:#7c3aed">Request teacher access</button></p>
+          <p class="auth-switch" id="no-signup" hidden>Need an account? Ask an existing teacher to add you from <em>Teachers</em>.</p>
+        </section>
+        <section id="signup-view" hidden>
+          <h1>Request teacher access</h1>
+          <p class="sub">Use your personal Gmail and choose a password. An existing teacher approves the request, then you can sign in.</p>
+          <form id="signup-form" novalidate>
+            <div class="form-error" id="signup-error" hidden></div>
+            <div class="field"><label for="s-email">Email</label><input id="s-email" name="email" type="email" autocomplete="email" placeholder="yourname@gmail.com" required><span class="hint" id="domain-hint">Use your personal Gmail address.</span></div>
+            <div class="field"><label for="s-pw">Password</label><input id="s-pw" name="password" type="password" minlength="6" autocomplete="new-password" required><span class="hint">At least 6 characters</span></div>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" style="background:#7c3aed;border-color:#7c3aed">Send request</button>
+          </form>
+          <p class="auth-switch">Already approved? <button class="link-btn" id="show-login" style="color:#7c3aed">Sign in</button></p>
         </section>
       </div>
     </main>

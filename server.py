@@ -223,6 +223,7 @@ def seed(conn):
 # --------------------------------------------------------------------------- #
 SETTING_DEFAULTS = {
     "student_signup": "1" if ALLOW_STUDENT_SIGNUP else "0",
+    "teacher_signup": os.environ.get("DOCWALL_TEACHER_SIGNUP", "1"),   # teachers may request access with their email
     "allowed_email_domains": ALLOWED_EMAIL_DOMAINS,
 }
 
@@ -241,7 +242,9 @@ def allowed_domains(conn):
 
 
 def settings_payload(conn):
-    return {"student_signup": get_setting(conn, "student_signup") == "1", "allowed_email_domains": allowed_domains(conn)}
+    return {"student_signup": get_setting(conn, "student_signup") == "1",
+            "teacher_signup": get_setting(conn, "teacher_signup") == "1",
+            "allowed_email_domains": allowed_domains(conn)}
 
 
 # --------------------------------------------------------------------------- #
@@ -330,6 +333,7 @@ def public_user(u):
 def api_config(ctx):
     conn = ctx["conn"]
     return {"college_name": COLLEGE_NAME, "allow_student_signup": get_setting(conn, "student_signup") == "1",
+            "allow_teacher_signup": get_setting(conn, "teacher_signup") == "1",
             "allowed_email_domains": allowed_domains(conn), "portal": ctx["handler"].portal}
 
 
@@ -363,11 +367,16 @@ def api_login(ctx):
 
 
 def api_register(ctx):
-    """Student requests an account with just an email and a password. A teacher must approve it
-    (adding roll number and class) before the student can sign in."""
+    """Someone requests an account with just an email and a password. An existing teacher must
+    approve it before they can sign in (students get their roll number and class at approval)."""
     conn, body = ctx["conn"], ctx["body"]
-    if get_setting(conn, "student_signup") != "1":
-        raise ApiError(403, "Sign-up is currently closed. Ask your teacher to create your account.")
+    role = body.get("role") or "student"
+    if role not in ROLES:
+        raise ApiError(400, "Invalid role.")
+    if role == "teacher" and ctx["handler"].portal == "student":
+        raise ApiError(403, "Teacher access is requested on the teacher portal.")
+    if get_setting(conn, f"{role}_signup") != "1":
+        raise ApiError(403, "Sign-up is currently closed. Ask a teacher to create your account.")
     require(body, "email", "password")
     email = body["email"].strip().lower()
     validate_email(email)
@@ -380,12 +389,13 @@ def api_register(ctx):
     try:
         conn.execute(
             "INSERT INTO users (role, name, email, roll_no, group_name, password_hash, created_at, status) VALUES (?,?,?,?,?,?,?,?)",
-            ("student", name, email, None, "", hash_password(body["password"]), now_iso(), "pending"),
+            (role, name, email, None, "", hash_password(body["password"]), now_iso(), "pending"),
         )
     except sqlite3.IntegrityError:
         raise ApiError(409, "An account with that email already exists.")
     conn.commit()
-    return {"pending": True, "message": "Request sent. Your teacher will approve it, then you can sign in."}
+    who = "Your teacher" if role == "student" else "An existing teacher"
+    return {"pending": True, "message": f"Request sent. {who} will approve it, then you can sign in."}
 
 
 def api_logout(ctx):
@@ -608,7 +618,8 @@ def api_teacher_overview(ctx):
         "published": q("SELECT COUNT(*) FROM assignments WHERE status = 'published'"),
         "students": q("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'active'"),
         "pending_students": q("SELECT COUNT(*) FROM users WHERE role = 'student' AND status = 'pending'"),
-        "teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher'"),
+        "teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'active'"),
+        "pending_teachers": q("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'pending'"),
         "submissions": q("SELECT COUNT(*) FROM submissions"),
         "ungraded": q("SELECT COUNT(*) FROM submissions WHERE grade IS NULL"),
     }
@@ -830,14 +841,25 @@ def api_teacher_approve_user(ctx):
     """Approve a pending student request, filling in the details the teacher knows."""
     conn, body = ctx["conn"], ctx["body"]
     uid = int(ctx["params"]["id"])
-    u = conn.execute("SELECT * FROM users WHERE id = ? AND role = 'student'", (uid,)).fetchone()
+    u = conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
     if u is None:
-        raise ApiError(404, "Student not found.")
-    require(body, "name", "roll_no", "group_name")
-    conn.execute("UPDATE users SET name=?, roll_no=?, group_name=?, status='active' WHERE id=?",
-                 (body["name"].strip(), body["roll_no"].strip().upper(), body["group_name"].strip().upper(), uid))
+        raise ApiError(404, "User not found.")
+    if u["role"] == "student":
+        require(body, "name", "roll_no", "group_name")
+        conn.execute("UPDATE users SET name=?, roll_no=?, group_name=?, status='active' WHERE id=?",
+                     (body["name"].strip(), body["roll_no"].strip().upper(), body["group_name"].strip().upper(), uid))
+    else:
+        require(body, "name")
+        conn.execute("UPDATE users SET name=?, status='active' WHERE id=?", (body["name"].strip(), uid))
     conn.commit()
     return {"user": public_user(conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone())}
+
+
+def api_teacher_requests(ctx):
+    """Pending account requests (students and teachers). Polled by the teacher portal for live invites."""
+    pending = rows(ctx["conn"].execute(
+        "SELECT id, role, name, email, created_at FROM users WHERE status = 'pending' ORDER BY created_at DESC"))
+    return {"requests": pending, "server_time": now_iso()}
 
 
 def api_teacher_settings(ctx):
@@ -848,6 +870,8 @@ def api_teacher_update_settings(ctx):
     conn, body = ctx["conn"], ctx["body"]
     if "student_signup" in body:
         set_setting(conn, "student_signup", "1" if body["student_signup"] else "0")
+    if "teacher_signup" in body:
+        set_setting(conn, "teacher_signup", "1" if body["teacher_signup"] else "0")
     if "allowed_email_domains" in body:
         raw = body["allowed_email_domains"]
         items = raw if isinstance(raw, list) else str(raw).split(",")
@@ -928,7 +952,7 @@ def api_teacher_delete_user(ctx):
     u = conn.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
     if u is None:
         raise ApiError(404, "User not found.")
-    if u["role"] == "teacher" and conn.execute("SELECT COUNT(*) FROM users WHERE role = 'teacher'").fetchone()[0] <= 1:
+    if u["role"] == "teacher" and u["status"] == "active" and conn.execute("SELECT COUNT(*) FROM users WHERE role = 'teacher' AND status = 'active'").fetchone()[0] <= 1:
         raise ApiError(400, "At least one teacher account must remain.")
     for f in conn.execute(
         "SELECT sf.stored_name FROM submission_files sf JOIN submissions s ON s.id = sf.submission_id WHERE s.student_id = ?", (uid,)
@@ -973,6 +997,7 @@ ROUTES = [
     ("POST",   r"/api/teacher/users",                            api_teacher_create_user,         "teacher"),
     ("PUT",    r"/api/teacher/users/(?P<id>\d+)",                api_teacher_update_user,         "teacher"),
     ("PUT",    r"/api/teacher/users/(?P<id>\d+)/approve",        api_teacher_approve_user,        "teacher"),
+    ("GET",    r"/api/teacher/requests",                         api_teacher_requests,            "teacher"),
     ("GET",    r"/api/teacher/settings",                         api_teacher_settings,            "teacher"),
     ("PUT",    r"/api/teacher/settings",                         api_teacher_update_settings,     "teacher"),
     ("DELETE", r"/api/teacher/users/(?P<id>\d+)",                api_teacher_delete_user,         "teacher"),
@@ -1125,7 +1150,7 @@ class DocVaultHandler(BaseHTTPRequestHandler):
                     if user is not None and user["role"] == "teacher" and user["_view_as"] is not None:
                         view_as = conn.execute("SELECT * FROM users WHERE id = ? AND role = 'student'", (user["_view_as"],)).fetchone()
                 if required_role is not None:
-                    if user is None:
+                    if user is None or user["status"] == "pending":
                         raise ApiError(401, "Please log in.")
                     if required_role == "student" and user["role"] == "teacher" and view_as is not None:
                         user, preview = view_as, True   # teacher looking through a student's eyes

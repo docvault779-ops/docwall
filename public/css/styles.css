@@ -300,3 +300,14 @@ h3 > svg { width: 17px; height: 17px; flex: none; }
 .preview-bar .btn:not(.btn-primary) { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.2); }
 .preview-bar + .topbar { top: 42px; }
 @media (max-width: 760px) { .preview-bar { flex-wrap: wrap; padding: 8px 14px; font-size: 12.5px; } .preview-bar > svg { display: none; } .preview-bar .min0 { flex: 1 0 100%; } .preview-bar .btn { flex: 1; justify-content: center; } .preview-bar + .topbar { top: auto; position: static; } }
+
+/* Live account-request invites (teacher portal) */
+.invites { position: fixed; right: 18px; bottom: 18px; z-index: 90; display: flex; flex-direction: column; gap: 10px; width: min(360px, calc(100vw - 32px)); }
+.invite { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid #c4b5fd; border-left: 4px solid #7c3aed; border-radius: 12px; padding: 12px 12px 12px 14px; box-shadow: var(--shadow-xl); animation: pop .25s var(--ease); }
+.invite .ico { width: 36px; height: 36px; border-radius: 10px; background: #ede9fe; color: #6d28d9; display: grid; place-items: center; flex: none; }
+.invite .ico svg { width: 18px; height: 18px; }
+.invite .t { font-weight: 650; font-size: 13.5px; }
+.invite .e { color: var(--text-muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.invite .row { display: flex; gap: 6px; margin-top: 8px; }
+.invite > .icon-btn { flex: none; width: 28px; height: 28px; }
+@media (max-width: 780px) { .invites { right: 12px; left: 12px; bottom: 12px; width: auto; } }
