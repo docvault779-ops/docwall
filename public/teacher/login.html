@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teacher Login · DocWall</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="auth">
+    <aside class="auth-side" style="background: radial-gradient(1200px 600px at -10% -20%, rgba(124,58,237,.35), transparent 60%), var(--sidebar-bg)">
+      <a class="brand" href="/" style="text-decoration:none">
+        <div class="brand-mark" style="background:linear-gradient(135deg,#7c3aed,#2563eb)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 10h16M10 4v16"/></svg></div>
+        <div><div class="brand-name">Doc<span style="color:#a78bfa">Wall</span></div><span class="brand-badge teacher">Teacher portal</span></div>
+      </a>
+      <div>
+        <h2>Post it once. Every student sees it.</h2>
+        <p>The teacher portal gives you full control: create, edit, publish and close assignments, grade submissions and manage accounts.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#a78bfa"><path d="M20 6L9 17l-5-5"/></svg>Create assignments with attachments and deadlines</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#a78bfa"><path d="M20 6L9 17l-5-5"/></svg>Target a class/section or the whole college</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#a78bfa"><path d="M20 6L9 17l-5-5"/></svg>See who submitted, who is late, who is missing</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#a78bfa"><path d="M20 6L9 17l-5-5"/></svg>Grade with feedback and export marks to CSV</li>
+        </ul>
+      </div>
+      <p style="font-size:12.5px;color:#64748b">Are you a student? <a href="/student/login" style="color:#a78bfa">Use the student login</a><br>Teachers can also open the student portal from <em>Student view</em> after signing in.</p>
+    </aside>
+    <main class="auth-form">
+      <div class="auth-card">
+        <section id="login-view">
+          <h1>Teacher sign in</h1>
+          <p class="sub">Teacher accounts are created by the department. Student credentials will not work here.</p>
+          <form id="login-form" novalidate>
+            <div class="form-error" id="login-error" hidden></div>
+            <div class="field"><label for="l-id">Email</label><input id="l-id" name="identifier" type="email" autocomplete="username" required autofocus></div>
+            <div class="field"><label for="l-pw">Password</label><input id="l-pw" name="password" type="password" autocomplete="current-password" required></div>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" style="background:#7c3aed;border-color:#7c3aed;box-shadow:0 4px 10px rgba(124,58,237,.25)">Sign in</button>
+          </form>
+          <p class="auth-switch">Need an account? Ask an existing teacher to add you from <em>Teachers</em>.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="/js/ui.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>Auth.init('teacher');</script>
+</body>
+</html>

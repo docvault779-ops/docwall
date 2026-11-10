@@ -1,0 +1,36 @@
+[Unit]
+Description=DocWall college assignment portal
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/docwall
+ExecStart=/usr/bin/python3 /opt/docwall/server.py
+Restart=on-failure
+RestartSec=3
+
+# --- configuration -------------------------------------------------------
+Environment=DOCWALL_HOST=127.0.0.1
+# Student portal and teacher portal listen on separate ports (same database)
+Environment=DOCWALL_STUDENT_PORT=8080
+Environment=DOCWALL_TEACHER_PORT=8081
+Environment=DOCWALL_DATA=/var/lib/docwall
+Environment=DOCWALL_COLLEGE_NAME=My College DocWall
+Environment=DOCWALL_STUDENT_SIGNUP=1
+Environment=DOCWALL_SEED_DEMO=0
+# Set to 1 once the site is served over HTTPS
+Environment=DOCWALL_SECURE_COOKIE=0
+# First teacher account (used only when the database is created)
+Environment=DOCWALL_ADMIN_EMAIL=hod@college.edu
+Environment=DOCWALL_ADMIN_PASSWORD=ChangeMe-Now-123
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/docwall
+
+[Install]
+WantedBy=multi-user.target
