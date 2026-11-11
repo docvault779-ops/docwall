@@ -38,8 +38,16 @@ python3 --version
 
 ## Run it (quick start)
 
-**Windows:** double-click `Start DocVault.bat` in the `docwall` folder. If Windows asks whether
-to allow Python through the firewall, click **Allow** (needed for other laptops to connect).
+**Windows, one click:** download **[Install-DocVault.bat](https://github.com/docvault779-ops/docwall/releases/latest/download/Install-DocVault.bat)**
+and double-click it. It checks for Python 3 and installs it silently if missing, downloads
+DocVault into `%LOCALAPPDATA%\DocVault`, puts a **DocVault** shortcut on the desktop and starts
+the portals. If a blue "Windows protected your PC" box appears, click **More info** then
+**Run anyway**; if Windows asks whether to allow Python through the firewall, click **Allow**
+(needed for other laptops to connect). Running the same file again later updates the code and
+keeps all assignments and accounts.
+
+**Windows, by hand:** install Python 3 (tick "Add python.exe to PATH"), download the ZIP of this
+repository, unzip it and double-click `Start DocVault.bat`.
 
 **Mac / Linux:**
 
@@ -48,7 +56,7 @@ cd docwall
 python3 server.py
 ```
 
-Either way this starts both portals:
+Every way starts both portals:
 
 * Student portal: <http://localhost:8080>
 * Teacher portal: <http://localhost:8081>
@@ -186,6 +194,8 @@ tar czf docwall-backup-$(date +%F).tgz -C /var/lib/docwall .
 
 ```
 docwall/
+├── Install-DocVault.bat  # Windows one-click installer (fetches install/Install-DocVault.ps1)
+├── Start DocVault.bat    # Windows launcher
 ├── server.py              # HTTP server + REST API + SQLite schema (stdlib only)
 ├── public/
 │   ├── index.html         # landing page: choose Student / Teacher

@@ -22,18 +22,21 @@ Open https://github.com/docvault779-ops/docwall in any browser.
 
 ## Part 2 – Run it on your laptop
 
-You need **Python 3** (version 3.10 or newer). Nothing else.
+**Windows (one click, no Part 1 needed):** download
+[Install-DocVault.bat](https://github.com/docvault779-ops/docwall/releases/latest/download/Install-DocVault.bat) and double-click it.
+A black window shows the progress: it checks for Python 3 and installs it silently if missing,
+downloads DocVault, puts a **DocVault** icon on the desktop and opens the teacher portal.
 
-* Windows: install Python from https://www.python.org/downloads and tick
-  **"Add python.exe to PATH"** on the first screen of the installer.
-* Mac: Python 3 is usually already there. Check with `python3 --version` in Terminal.
-* Linux: `sudo apt install python3`.
+* If a blue "Windows protected your PC" box appears, click **More info**, then **Run anyway**.
+  It appears because the file was downloaded from the internet, not because anything is wrong.
+* If Windows asks whether to allow Python through the firewall, click **Allow**, otherwise
+  other laptops cannot reach the portals.
+* From then on, double-click the **DocVault** icon on the desktop to start it. A black window
+  stays open while the portals run; close it to stop.
+* Run the installer again any time to update to the latest code. Assignments and accounts are kept.
 
-**Windows:** open the `docwall` folder and double-click **Start DocVault.bat**. A black window
-opens and stays open while the portals run; close it to stop. If Windows asks whether to allow
-Python through the firewall, click **Allow**, otherwise other laptops cannot reach the portals.
-
-**Mac / Linux:** open Terminal and run:
+**Mac / Linux:** you need Python 3.10 or newer (Mac: usually already there, check with
+`python3 --version`; Linux: `sudo apt install python3`). Then open Terminal and run:
 
     cd docwall
     python3 server.py
