@@ -42,8 +42,13 @@ HOST = os.environ.get("DOCWALL_HOST", "0.0.0.0")
 # The student portal and the teacher portal are served on two different ports by
 # the same process, sharing one database. Set both to the same port to get a single
 # combined site with a role-chooser landing page instead.
-STUDENT_PORT = int(os.environ.get("DOCWALL_STUDENT_PORT", os.environ.get("DOCWALL_PORT", "8080")))
-TEACHER_PORT = int(os.environ.get("DOCWALL_TEACHER_PORT", "8081"))
+# Hosting platforms (Render, Railway, Heroku-style) give one port in PORT: then both portals
+# share it as the combined site.
+if os.environ.get("PORT"):
+    STUDENT_PORT = TEACHER_PORT = int(os.environ["PORT"])
+else:
+    STUDENT_PORT = int(os.environ.get("DOCWALL_STUDENT_PORT", os.environ.get("DOCWALL_PORT", "8080")))
+    TEACHER_PORT = int(os.environ.get("DOCWALL_TEACHER_PORT", "8081"))
 MAX_BODY_BYTES = int(os.environ.get("DOCWALL_MAX_UPLOAD_MB", "25")) * 1024 * 1024
 SESSION_DAYS = int(os.environ.get("DOCWALL_SESSION_DAYS", "7"))
 ALLOW_STUDENT_SIGNUP = os.environ.get("DOCWALL_STUDENT_SIGNUP", "1") != "0"      # initial value; teachers can change it in Settings

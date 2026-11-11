@@ -124,6 +124,7 @@ If the code leaks, change it in Settings and delete any unknown teacher under **
 | `DOCWALL_HOST` | `0.0.0.0` | Interface to listen on. Use `127.0.0.1` when behind Nginx/Apache. |
 | `DOCWALL_STUDENT_PORT` | `8080` | Port of the student portal (`DOCWALL_PORT` is accepted as an alias). |
 | `DOCWALL_TEACHER_PORT` | `8081` | Port of the teacher portal. Set it **equal** to the student port to serve one combined site with a "Student / Teacher" chooser page instead of two portals. |
+| `PORT` | *(unset)* | Set by hosting platforms such as Render. When present, both portals share this one port as a combined site. |
 | `DOCWALL_DATA` | `./data` | Where the SQLite DB and uploads live. Point this at a disk that gets backed up. |
 | `DOCWALL_MAX_UPLOAD_MB` | `25` | Max size of a single uploaded file. |
 | `DOCWALL_SESSION_DAYS` | `7` | How long a login lasts. |
@@ -135,6 +136,33 @@ If the code leaks, change it in Settings and delete any unknown teacher under **
 | `DOCWALL_COLLEGE_NAME` | `DocVault College Portal` | Shown in the browser tab on the landing page. |
 
 ---
+
+## Putting a prototype online for free (Render)
+
+DocVault is a Python server with a database and file uploads, so it cannot run on a static
+host such as Netlify or GitHub Pages. It runs for free on [Render](https://render.com), which
+starts the server straight from this repository with the included `render.yaml`:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/docvault779-ops/docwall)
+
+1. Click the button (or on Render choose **New → Blueprint** and paste this repository's URL)
+   and sign in with GitHub or an email address.
+2. Accept the defaults and click **Apply**. The first deploy takes a minute or two.
+3. Render shows an address like `https://docvault.onrender.com`. On it:
+   * `https://docvault.onrender.com/teacher/login` - teacher login (sign up with the access
+     code `DV-TEACHER-2026`, then change it under Settings)
+   * `https://docvault.onrender.com/student/login` - student login
+   * The front page lets a visitor choose between the two.
+
+Online hosting puts both portals on one address, because a free service gets one port, so the
+student side also shows the teacher login link. Two things to know about the free plan:
+
+* **Data is not kept.** Render wipes the disk on every deploy and restart, so assignments,
+  uploads and accounts disappear. It is a demo, not the college's copy.
+* **It sleeps.** After 15 minutes without visitors the first request takes about a minute.
+
+Render reads the `PORT` variable it sets; so does any host that sets `PORT` (Railway,
+Fly.io, Heroku-style platforms) - the start command is always `python3 server.py`.
 
 ## Deploying on the college server (Linux)
 

@@ -1,0 +1,20 @@
+# Render blueprint: deploy DocVault as one free web service (both portals on one address).
+# Free plan note: the disk is wiped on every deploy and restart, so assignments and
+# accounts are not kept. Fine for a prototype; use a real server for the college.
+services:
+  - type: web
+    name: docvault
+    runtime: python
+    plan: free
+    buildCommand: echo "nothing to build - standard library only"
+    startCommand: python3 server.py
+    healthCheckPath: /student/login
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.10"
+      - key: DOCWALL_SECURE_COOKIE
+        value: "1"
+      - key: DOCWALL_COLLEGE_NAME
+        value: DocVault
+      - key: DOCWALL_TEACHER_CODE
+        value: DV-TEACHER-2026

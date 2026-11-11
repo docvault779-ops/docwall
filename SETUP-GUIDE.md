@@ -6,7 +6,7 @@ GitHub account or invitation is needed to use it:
 
     https://github.com/docvault779-ops/docwall
 
-This guide has three parts. Do them in order.
+This guide has four parts. Parts 1 to 3 are the real setup; Part 4 is an optional free online demo.
 
 ---
 
@@ -101,6 +101,24 @@ Updating later, after either of us pushes a change:
 
 No sudo? Run `python3 server.py` inside `tmux` or `screen` with `DOCWALL_DATA` pointing to a
 folder you own. Windows server? Install Python and double-click `Start DocVault.bat`.
+
+---
+
+## Part 4 – Put a prototype online for free (to show it around)
+
+Netlify cannot run DocVault: it only serves fixed files, and DocVault is a running program with
+a database and uploads. Use **Render** instead; it is free and starts the app from GitHub:
+
+1. Open https://render.com/deploy?repo=https://github.com/docvault779-ops/docwall and sign in
+   (GitHub login or email).
+2. Click **Apply**. Wait a minute or two for the first deploy.
+3. Open the address Render gives you (something like `https://docvault.onrender.com`).
+   The front page offers **Student** and **Teacher**; teachers sign up with the access code
+   `DV-TEACHER-2026` and should change it under Settings.
+
+Only for showing the prototype: on the free plan everything is wiped whenever Render restarts
+or redeploys the app, and after 15 idle minutes the first visit takes about a minute to wake up.
+The college's own copy should run on the college server (Part 3), where data is kept.
 
 ---
 
