@@ -1,7 +1,8 @@
 # DocVault – Setup Guide for Tanav
 
 DocVault is our college assignment portal. Students see and submit assignments on one site,
-teachers manage everything on another. The code lives in a private GitHub repository:
+teachers manage everything on another. The code lives in a public GitHub repository, so no
+GitHub account or invitation is needed to use it:
 
     https://github.com/docvault779-ops/docwall
 
@@ -9,28 +10,19 @@ This guide has three parts. Do them in order.
 
 ---
 
-## Part 1 – Join the GitHub repository (one time, on your phone or laptop)
+## Part 1 – Get the code (one time)
 
-The invitation was sent to your GitHub account **Tanavram**. GitHub only lets you accept it once
-your email address is verified, which is why the link showed a 404 error.
+Open https://github.com/docvault779-ops/docwall in any browser.
 
-1. Open a browser (Chrome or Safari, not the GitHub app) and go to https://github.com/login.
-   Sign in as **Tanavram**.
-2. Go to https://github.com/settings/emails.
-3. If your email says **Unverified**, tap **Resend verification email**. Open that email and tap
-   **Verify email address**. Check the spam folder if it does not arrive in a minute.
-4. In the same browser, open https://github.com/docvault779-ops/docwall/invitations and tap
-   **Accept invitation**.
-5. Done. The repository now shows in the GitHub app under Repositories.
-
-If step 4 still shows 404, make sure the avatar in the top-right corner of the page is Tanavram
-and not another account, then try again.
+* **Easiest:** click the green **Code** button, then **Download ZIP**, and unzip it. You get a
+  `docwall` folder containing `server.py`, `Start DocVault.bat` and the `public` folder.
+* **With Git** (lets you pull updates later): `git clone https://github.com/docvault779-ops/docwall.git`
 
 ---
 
-## Part 2 – Get the code and run it on your laptop
+## Part 2 – Run it on your laptop
 
-You need two programs: **Git** and **Python 3** (version 3.10 or newer). Nothing else.
+You need **Python 3** (version 3.10 or newer). Nothing else.
 
 * Windows: install Git from https://git-scm.com and Python from https://www.python.org/downloads
   (tick "Add Python to PATH" during install).
@@ -38,15 +30,14 @@ You need two programs: **Git** and **Python 3** (version 3.10 or newer). Nothing
   `git --version` in Terminal.
 * Linux: `sudo apt install git python3`.
 
-Then open a terminal (Command Prompt / PowerShell on Windows, Terminal on Mac) and run:
+**Windows:** open the `docwall` folder and double-click **Start DocVault.bat**. A black window
+opens and stays open while the portals run; close it to stop. If Windows asks whether to allow
+Python through the firewall, click **Allow**, otherwise other laptops cannot reach the portals.
 
-    git clone https://github.com/docvault779-ops/docwall.git
+**Mac / Linux:** open Terminal and run:
+
     cd docwall
     python3 server.py
-
-(On Windows the last line is `py server.py`.) Git asks for your GitHub username and a
-**personal access token** instead of a password the first time. Create one at
-https://github.com/settings/tokens → Generate new token (classic) → tick `repo` → copy it.
 
 The server prints two addresses:
 
@@ -106,7 +97,7 @@ Updating later, after either of us pushes a change:
     cd /opt/docwall && sudo git pull && sudo systemctl restart docwall
 
 No sudo? Run `python3 server.py` inside `tmux` or `screen` with `DOCWALL_DATA` pointing to a
-folder you own. Windows server? Install Python and run `py server.py`.
+folder you own. Windows server? Install Python and double-click `Start DocVault.bat`.
 
 ---
 

@@ -38,12 +38,17 @@ python3 --version
 
 ## Run it (quick start)
 
+**Windows:** double-click `Start DocVault.bat` in the `docwall` folder. If Windows asks whether
+to allow Python through the firewall, click **Allow** (needed for other laptops to connect).
+
+**Mac / Linux:**
+
 ```bash
 cd docwall
 python3 server.py
 ```
 
-This starts both portals:
+Either way this starts both portals:
 
 * Student portal: <http://localhost:8080>
 * Teacher portal: <http://localhost:8081>
@@ -162,8 +167,8 @@ If the code leaks, change it in Settings and delete any unknown teacher under **
 
 ### Without root access / on Windows
 
-Just run `python3 server.py` (or `py server.py` on Windows) in a terminal or a `screen`/`tmux`
-session. Students open `http://<server-ip>:8080`, teachers open `http://<server-ip>:8081`.
+Just run `python3 server.py` in a terminal or a `screen`/`tmux` session (on Windows,
+double-click `Start DocVault.bat` or run `py server.py`). Students open `http://<server-ip>:8080`, teachers open `http://<server-ip>:8081`.
 Set `DOCWALL_DATA` to a folder you own.
 
 ### Backups
