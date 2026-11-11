@@ -24,11 +24,10 @@ Open https://github.com/docvault779-ops/docwall in any browser.
 
 You need **Python 3** (version 3.10 or newer). Nothing else.
 
-* Windows: install Git from https://git-scm.com and Python from https://www.python.org/downloads
-  (tick "Add Python to PATH" during install).
-* Mac: Python 3 and Git are usually already there. Check with `python3 --version` and
-  `git --version` in Terminal.
-* Linux: `sudo apt install git python3`.
+* Windows: install Python from https://www.python.org/downloads and tick
+  **"Add python.exe to PATH"** on the first screen of the installer.
+* Mac: Python 3 is usually already there. Check with `python3 --version` in Terminal.
+* Linux: `sudo apt install python3`.
 
 **Windows:** open the `docwall` folder and double-click **Start DocVault.bat**. A black window
 opens and stays open while the portals run; close it to stop. If Windows asks whether to allow
