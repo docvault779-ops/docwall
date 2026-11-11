@@ -22,9 +22,10 @@ Open https://github.com/docvault779-ops/docwall in any browser.
 
 ## Part 2 – Run it on your laptop
 
-**Windows (one click, no Part 1 needed):** download
-[Install-DocVault.bat](https://github.com/docvault779-ops/docwall/releases/latest/download/Install-DocVault.bat) and double-click it.
-A black window shows the progress: it checks for Python 3 and installs it silently if missing,
+**Windows (one click, no Part 1 needed):** open
+[Install-DocVault.bat](https://github.com/docvault779-ops/docwall/blob/main/Install-DocVault.bat), click the
+**download** icon at the top right of the file (next to "Raw"), then double-click the downloaded
+file. A black window shows the progress: it checks for Python 3 and installs it silently if missing,
 downloads DocVault, puts a **DocVault** icon on the desktop and opens the teacher portal.
 
 * If a blue "Windows protected your PC" box appears, click **More info**, then **Run anyway**.

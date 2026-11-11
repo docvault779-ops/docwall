@@ -38,8 +38,9 @@ python3 --version
 
 ## Run it (quick start)
 
-**Windows, one click:** download **[Install-DocVault.bat](https://github.com/docvault779-ops/docwall/releases/latest/download/Install-DocVault.bat)**
-and double-click it. It checks for Python 3 and installs it silently if missing, downloads
+**Windows, one click:** open **[Install-DocVault.bat](https://github.com/docvault779-ops/docwall/blob/main/Install-DocVault.bat)**,
+click the **download** icon at the top right of the file (next to "Raw"), then double-click the
+downloaded file. It checks for Python 3 and installs it silently if missing, downloads
 DocVault into `%LOCALAPPDATA%\DocVault`, puts a **DocVault** shortcut on the desktop and starts
 the portals. If a blue "Windows protected your PC" box appears, click **More info** then
 **Run anyway**; if Windows asks whether to allow Python through the firewall, click **Allow**
