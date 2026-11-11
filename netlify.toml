@@ -1,0 +1,5 @@
+# Netlify hosts the front-end-only demo in demo/ (fake backend in the browser, see README "Netlify demo").
+# The real DocVault needs the Python server, which Netlify cannot run: use render.yaml for that.
+[build]
+  command = "python3 demo/build.py"
+  publish = "demo"

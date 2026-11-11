@@ -140,7 +140,8 @@ If the code leaks, change it in Settings and delete any unknown teacher under **
 ## Putting a prototype online for free (Render)
 
 DocVault is a Python server with a database and file uploads, so it cannot run on a static
-host such as Netlify or GitHub Pages. It runs for free on [Render](https://render.com), which
+host such as Netlify or GitHub Pages (for Netlify there is a front-end-only demo, see
+[Netlify demo](#netlify-demo-front-end-only-no-server) below). It runs for free on [Render](https://render.com), which
 starts the server straight from this repository with the included `render.yaml`:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/docvault779-ops/docwall)
@@ -163,6 +164,42 @@ student side also shows the teacher login link. Two things to know about the fre
 
 Render reads the `PORT` variable it sets; so does any host that sets `PORT` (Railway,
 Fly.io, Heroku-style platforms) - the start command is always `python3 server.py`.
+
+## Netlify demo (front end only, no server)
+
+Netlify cannot run `server.py`, so the repository also contains a **static demo** in `demo/`:
+the same pages, styles and scripts, plus `demo/js/mock-api.js`, a fake backend that runs
+inside the browser and keeps everything in the browser's `localStorage`. It answers every
+route in the [API overview](#api-overview) the way the real server does, so you can sign up a
+teacher with the access code, create and publish assignments, request and approve student
+accounts, submit work with (small) files, grade, preview the student view and export marks to
+CSV. A yellow **Demo mode** banner at the top says so, with a **Sample logins** button (two
+teachers, five students, one pending request) and a **Reset demo data** button.
+
+Good for showing the UI around; not for real use: the data never leaves the browser, every
+visitor sees their own copy, clearing site data wipes it, and uploads are limited to about
+1.5 MB per file.
+
+To put it on Netlify:
+
+1. On [Netlify](https://app.netlify.com) choose **Add new site → Import an existing project →
+   GitHub** and pick this repository.
+2. The build settings come from `netlify.toml` (build command `python3 demo/build.py`, publish
+   directory `demo`); if Netlify asks, enter those two values. Click **Deploy**.
+3. Open the address Netlify shows. The front page offers the two logins:
+   `/student/login` and `/teacher/login`. New teachers sign up with the access code
+   `DV-TEACHER-2026`; the sample accounts are listed under **Sample logins** in the banner.
+
+To try the demo on your own computer without the Python server:
+
+```bash
+cd docwall/demo
+python3 -m http.server 8090
+```
+
+and open <http://localhost:8090>. After changing anything in `public/`, run
+`python3 demo/build.py` to regenerate the demo (Netlify runs it on every deploy as well).
+`server.py` and `public/` are not touched by the demo.
 
 ## Deploying on the college server (Linux)
 
@@ -235,6 +272,10 @@ docwall/
 ├── deploy/
 │   ├── docwall.service    # systemd unit
 │   └── nginx-docwall.conf # reverse-proxy config
+├── render.yaml            # one-click Render deployment of the real app
+├── netlify.toml           # Netlify: publishes demo/ (static demo, no server)
+├── demo/                  # static demo: generated copy of public/ + js/mock-api.js (fake backend)
+│   └── build.py           # regenerates the demo from public/
 └── data/                  # created on first run (DB + uploads) – back this up
 ```
 

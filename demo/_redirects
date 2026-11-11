@@ -1,0 +1,6 @@
+# Netlify: clean URLs for the DocVault demo (both portals on one site).
+# Existing files always win over these rules, so /css, /js and the pages themselves are served as-is.
+/student/login   /student/login/index.html   200
+/teacher/login   /teacher/login/index.html   200
+/student/*       /student/index.html         200
+/teacher/*       /teacher/index.html         200
