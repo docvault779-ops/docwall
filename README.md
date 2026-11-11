@@ -48,10 +48,10 @@ This starts both portals:
 * Student portal: <http://localhost:8080>
 * Teacher portal: <http://localhost:8081>
 
-On the very first run DocVault creates `data/docwall.db` and a **teacher access code**, which is
-printed at every start:
+On the very first run DocVault creates `data/docwall.db` and sets the **teacher access code** to
+the default `DV-TEACHER-2026`. The current code is printed at every start:
 
-    Teacher access code : DV-7K3M-P9XQ   (teachers sign up with it on the teacher portal; change it in Settings)
+    Teacher access code : DV-TEACHER-2026   (the default - teachers sign up with it on the teacher portal; change it in Settings before students learn it)
 
 There are no accounts to begin with. The first teacher opens the teacher portal, chooses
 **Create a teacher account** and enters their email, that code and a password. Every teacher
@@ -115,7 +115,7 @@ If the code leaks, change it in Settings and delete any unknown teacher under **
 | `DOCWALL_SESSION_DAYS` | `7` | How long a login lasts. |
 | `DOCWALL_STUDENT_SIGNUP` | `1` | Initial value of the "students may request an account" switch. Teachers change it later in **Settings**. |
 | `DOCWALL_TEACHER_SIGNUP` | `1` | Initial value of the "teachers may sign up with the access code" switch. Teachers change it later in **Settings**. |
-| `DOCWALL_TEACHER_CODE` | *(random)* | Initial teacher access code (first run only). Leave unset to get a random one, printed at every start. Teachers change it later in **Settings**. |
+| `DOCWALL_TEACHER_CODE` | `DV-TEACHER-2026` | Initial teacher access code (first run only), printed at every start. Teachers change it later in **Settings**. |
 | `DOCWALL_ALLOWED_EMAIL_DOMAINS` | `gmail.com` | Initial list of email domains accepted for student requests (comma separated, empty = any). Teachers change it later in **Settings**. |
 | `DOCWALL_SECURE_COOKIE` | `0` | Set to `1` when the site is served over HTTPS. |
 | `DOCWALL_COLLEGE_NAME` | `DocVault College Portal` | Shown in the browser tab on the landing page. |
@@ -155,9 +155,10 @@ If the code leaks, change it in Settings and delete any unknown teacher under **
    Give students only the student address. The teacher address can stay internal to the
    department (or be limited to the campus network with an Nginx `allow`/`deny` block).
 
-5. **First login**: read the teacher access code from `journalctl -u docwall`, open the
-   **teacher** address, choose **Create a teacher account** and use the code. Share the code
-   with the other teachers (or add them under **Teachers**).
+5. **First login**: open the **teacher** address, choose **Create a teacher account** and use
+   the teacher access code (`DV-TEACHER-2026` unless you set `DOCWALL_TEACHER_CODE`; it is also
+   printed in `journalctl -u docwall`). Change the code under **Settings**, then share it with
+   the other teachers (or add them under **Teachers**).
 
 ### Without root access / on Windows
 

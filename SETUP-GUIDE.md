@@ -53,9 +53,9 @@ The server prints two addresses:
     Student portal : http://localhost:8080
     Teacher portal : http://localhost:8081
 
-The terminal also prints a **teacher access code** (something like `DV-7K3M-P9XQ`). Open the
-teacher portal, choose **Create a teacher account**, enter your email, that code and a password,
-and you are in. The portal starts empty: create an assignment, then open **Student view** to see
+The terminal also prints the **teacher access code**, which is `DV-TEACHER-2026` on a fresh
+install. Open the teacher portal, choose **Create a teacher account**, enter your email, that code
+and a password, and you are in. Change the code under **Settings** before students hear of it. The portal starts empty: create an assignment, then open **Student view** to see
 it the way a student would.
 
 Stop the server with Ctrl+C.
@@ -77,7 +77,7 @@ portals. Then:
        sudo mkdir -p /var/lib/docwall && sudo chown www-data:www-data /var/lib/docwall
 
 3. Optionally open `/opt/docwall/deploy/docwall.service` and set `DOCWALL_TEACHER_CODE` to a
-   code of your choice (leave it out to get a random one). Then install and start it:
+   code of your choice (otherwise the default `DV-TEACHER-2026` is used). Then install and start it:
 
        sudo cp /opt/docwall/deploy/docwall.service /etc/systemd/system/
        sudo systemctl daemon-reload
@@ -95,9 +95,10 @@ portals. Then:
 
    For HTTPS run `sudo certbot --nginx` and set `DOCWALL_SECURE_COOKIE=1` in the service file.
 
-5. First login: read the teacher access code with `sudo journalctl -u docwall | grep "access code"`,
-   open the teacher address, choose **Create a teacher account** and use that code. Then set the
-   accepted email domain under **Settings**, share the code with the other teachers, and share
+5. First login: open the teacher address, choose **Create a teacher account** and use the
+   teacher access code (`DV-TEACHER-2026` unless you changed it in the service file; it is also
+   printed by `sudo journalctl -u docwall | grep "access code"`). Then change the code and set the
+   accepted email domain under **Settings**, share the new code with the other teachers, and share
    the student address with students.
 
 Updating later, after either of us pushes a change:

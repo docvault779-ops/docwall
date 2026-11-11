@@ -22,8 +22,8 @@ Environment=DOCWALL_STUDENT_SIGNUP=1
 # Set to 1 once the site is served over HTTPS
 Environment=DOCWALL_SECURE_COOKIE=0
 # Teacher access code used on the first start only (teachers change it later in Settings).
-# Remove this line to get a random code; read it with: journalctl -u docwall | grep "access code"
-Environment=DOCWALL_TEACHER_CODE=Change-This-Code-123
+# Defaults to DV-TEACHER-2026 when this line is removed; the current code is printed at every start.
+Environment=DOCWALL_TEACHER_CODE=DV-TEACHER-2026
 
 # Hardening
 NoNewPrivileges=true

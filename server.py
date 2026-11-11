@@ -54,6 +54,7 @@ COLLEGE_NAME = os.environ.get("DOCWALL_COLLEGE_NAME", "DocVault College Portal")
 # Teachers sign themselves up with this code (no approval). Initial value only; teachers change it in Settings.
 # Leave unset and a random code is generated on the first run and printed at every start.
 TEACHER_CODE_ENV = os.environ.get("DOCWALL_TEACHER_CODE", "").strip()
+DEFAULT_TEACHER_CODE = "DV-TEACHER-2026"   # used on the first start when DOCWALL_TEACHER_CODE is unset; teachers change it in Settings
 
 COOKIE_NAME = "docwall_session"
 ROLES = ("student", "teacher")
@@ -185,17 +186,10 @@ def init_db():
         )
         conn.execute("PRAGMA foreign_keys = ON")
     if conn.execute("SELECT 1 FROM settings WHERE key = 'teacher_code'").fetchone() is None:
-        set_setting(conn, "teacher_code", TEACHER_CODE_ENV or new_teacher_code())
-        print("[setup] Teacher access code created. Share it with the teachers; they sign up with it on the teacher portal.")
+        set_setting(conn, "teacher_code", TEACHER_CODE_ENV or DEFAULT_TEACHER_CODE)
+        print("[setup] Teacher access code set. Share it with the teachers; they sign up with it on the teacher portal.")
     conn.commit()
     conn.close()
-
-
-def new_teacher_code():
-    """A short code that is easy to read out: letters and digits without 0/O/1/I, e.g. DV-7K3M-P9XQ."""
-    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    pick = lambda n: "".join(secrets.choice(alphabet) for _ in range(n))
-    return f"DV-{pick(4)}-{pick(4)}"
 
 
 def normalize_code(code):
@@ -1244,7 +1238,9 @@ def main():
     teacher_code = get_setting(conn, "teacher_code")
     teacher_count = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'teacher'").fetchone()[0]
     conn.close()
-    if teacher_code:
+    if teacher_code and normalize_code(teacher_code) == normalize_code(DEFAULT_TEACHER_CODE):
+        print(f"Teacher access code : {teacher_code}   (the default - teachers sign up with it on the teacher portal; change it in Settings before students learn it)")
+    elif teacher_code:
         print(f"Teacher access code : {teacher_code}   (teachers sign up with it on the teacher portal; change it in Settings)")
     else:
         print("Teacher access code : none - anyone can sign up as a teacher! Set one in Settings.")
